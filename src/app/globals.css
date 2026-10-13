@@ -1,31 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg-base: #060913;
-  --bg-surface: #0c1222;
-  --bg-surface-elevated: #131c36;
-  --bg-card: rgba(18, 28, 54, 0.7);
-  --bg-card-hover: rgba(26, 39, 74, 0.85);
+  /* Supernova Studio Enterprise Palette */
+  --bg-app: #0e0e11;
+  --bg-sidebar: #131316;
+  --bg-surface: #18181c;
+  --bg-surface-hover: #1f1f24;
+  --bg-surface-elevated: #24242a;
+  --bg-canvas: #0a0a0d;
   
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --border-accent: rgba(99, 102, 241, 0.4);
+  --border-subtle: #232328;
+  --border-default: #2b2b32;
+  --border-focus: #3b82f6;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #f4f4f6;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 
-  --accent-primary: #6366f1;
-  --accent-primary-hover: #4f46e5;
-  --accent-glow: rgba(99, 102, 241, 0.25);
-  
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #2563eb;
+  --accent-indigo: #6366f1;
   --accent-cyan: #06b6d4;
   --accent-emerald: #10b981;
   --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
-  --accent-purple: #a855f7;
 
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -36,7 +36,7 @@
 }
 
 body {
-  background-color: var(--bg-base);
+  background-color: var(--bg-app);
   color: var(--text-primary);
   font-family: var(--font-sans);
   min-height: 100vh;
@@ -45,160 +45,174 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Background ambient glows */
-.ambient-glow {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 0;
-  background: 
-    radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 85% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 50% 85%, rgba(168, 85, 247, 0.08) 0%, transparent 45%);
-}
-
-/* Glassmorphism Container */
-.glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* Supernova Clean Panel */
+.sn-panel {
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  transition: all 0.2s ease-in-out;
+  border-radius: 8px;
 }
 
-.glass-panel:hover {
-  border-color: var(--border-strong);
+.sn-panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.glass-card-interactive {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.glass-card-interactive:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-accent);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px -10px var(--accent-glow);
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(6, 9, 19, 0.8);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-/* Code Fonts */
-pre, code, .font-mono {
-  font-family: var(--font-mono);
-}
-
-/* Animation utilities */
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 3s infinite ease-in-out;
-}
-
-/* Button styles */
+/* Buttons */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 14px;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #ffffff;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+  background: #2563eb;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   text-decoration: none;
-  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.35);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.5);
+  background: #1d4ed8;
+  border-color: #2563eb;
 }
 
 .btn-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 14px;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   text-decoration: none;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--border-strong);
+  background: var(--bg-surface-hover);
+  border-color: #3f3f46;
 }
 
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #e11d48;
+  border: 1px solid #f43f5e;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Badges */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  font-size: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: 9999px;
+  border-radius: 4px;
   border: 1px solid transparent;
 }
 
 .badge-indigo {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(99, 102, 241, 0.12);
   color: #a5b4fc;
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.25);
 }
 
 .badge-emerald {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(16, 185, 129, 0.12);
   color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
 .badge-amber {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.12);
   color: #fcd34d;
-  border-color: rgba(245, 158, 11, 0.3);
+  border-color: rgba(245, 158, 11, 0.25);
 }
 
 .badge-rose {
-  background: rgba(244, 63, 94, 0.15);
+  background: rgba(244, 63, 94, 0.12);
   color: #fda4af;
-  border-color: rgba(244, 63, 94, 0.3);
+  border-color: rgba(244, 63, 94, 0.25);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Code */
+pre, code, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Glass-panel backwards compat */
+.glass-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.glass-card-interactive {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.glass-card-interactive:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-default);
 }
