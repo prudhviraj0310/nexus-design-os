@@ -56,6 +56,12 @@ export class FigmaClient {
         } catch {
           // ignore
         }
+
+        // On non-Enterprise plans, Figma blocks /variables/local. Fall back to extracting design tokens from the file canvas.
+        if (response.status === 403 && (detail?.includes('file_variables:read') || detail?.includes('scope'))) {
+          return await this.extractTokensFromFile(fileKey, figmaToken);
+        }
+
         throw new Error(`Figma API error (${response.status}): ${detail}`);
       } catch (err: any) {
         if (err.name === 'AbortError') {
@@ -128,6 +134,84 @@ export class FigmaClient {
             description: '48px extra large spacing scale',
           },
         },
+      },
+    };
+  }
+
+  public async extractTokensFromFile(fileKey: string, figmaToken: string): Promise<FigmaVariablesResponse> {
+    const fileRes = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=3`, {
+      headers: {
+        'X-Figma-Token': figmaToken,
+        'User-Agent': 'NovaDesign-Platform/0.1.0',
+      },
+    });
+
+    if (!fileRes.ok) {
+      throw new Error(`Figma API error (${fileRes.status}): ${fileRes.statusText}`);
+    }
+
+    const fileData = await fileRes.json();
+    const variables: Record<string, any> = {};
+    const seenColors = new Map<string, { r: number; g: number; b: number; a: number; name: string }>();
+
+    function sanitizeName(name: string): string {
+      return name.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'color';
+    }
+
+    function walk(node: any) {
+      if (node.fills && Array.isArray(node.fills)) {
+        for (const fill of node.fills) {
+          if (fill.type === 'SOLID' && fill.color) {
+            const r = fill.color.r;
+            const g = fill.color.g;
+            const b = fill.color.b;
+            const a = fill.opacity ?? fill.color.a ?? 1;
+            const hex = `#${Math.round(r * 255).toString(16).padStart(2, '0')}${Math.round(g * 255).toString(16).padStart(2, '0')}${Math.round(b * 255).toString(16).padStart(2, '0')}`;
+            if (!seenColors.has(hex)) {
+              const nodeName = sanitizeName(node.name || 'palette');
+              seenColors.set(hex, { r, g, b, a, name: `color/${nodeName}` });
+            }
+          }
+        }
+      }
+      if (node.children) {
+        for (const child of node.children) walk(child);
+      }
+    }
+
+    if (fileData.document) walk(fileData.document);
+
+    let idx = 0;
+    for (const [hex, info] of seenColors.entries()) {
+      idx++;
+      const varId = `var-canvas-${idx}`;
+      variables[varId] = {
+        id: varId,
+        key: `key-canvas-${idx}`,
+        name: `${info.name}-${idx}`,
+        variableCollectionId: 'col-canvas',
+        resolvedType: 'COLOR',
+        valuesByMode: {
+          'm:canvas': { r: info.r, g: info.g, b: info.b, a: info.a },
+        },
+      };
+    }
+
+    return {
+      status: 200,
+      meta: {
+        variableCollections: {
+          'col-canvas': {
+            id: 'col-canvas',
+            name: 'Figma Canvas Tokens',
+            modes: [
+              { modeId: 'm:canvas', name: 'Light' },
+              { modeId: 'm:canvas', name: 'Default' },
+            ],
+            defaultModeId: 'm:canvas',
+          },
+        },
+        variables,
       },
     };
   }
