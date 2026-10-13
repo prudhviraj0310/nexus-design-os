@@ -14,7 +14,7 @@ describe('Design System Releases & Version Publishing', () => {
     const allReleases = await db.select().from(releases);
     expect(allReleases.length).toBeGreaterThanOrEqual(2);
 
-    const v1_0 = allReleases.find((r) => r.version === '1.0.0');
+    const v1_0 = allReleases.find((r: any) => r.version === '1.0.0');
     expect(v1_0).toBeDefined();
     expect(v1_0?.title).toContain('Initial Token Foundation');
   });

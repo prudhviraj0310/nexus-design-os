@@ -15,22 +15,28 @@ import {
   Sparkles,
   ShieldCheck,
   Terminal,
-  Sun,
-  Moon,
-  Laptop,
   CheckCircle2,
   FileCode,
+  ArrowUpRight,
+  ChevronDown,
+  Play,
+  Cpu,
+  RefreshCw,
+  FolderDown,
 } from 'lucide-react';
 
-export default function LivingDocumentationPage() {
-  const [activeSection, setActiveSection] = useState<string>('foundations-colors');
-  const [docTheme, setDocTheme] = useState<'light' | 'dark'>('dark');
+export default function SupernovaDocumentationPortal() {
+  const [activeSection, setActiveSection] = useState<string>('ai-contexts-101');
   const [tokens, setTokens] = useState<any[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Button demo state
-  const [buttonVariant, setButtonVariant] = useState<'primary' | 'secondary' | 'ghost'>('primary');
-  const [buttonSize, setButtonSize] = useState<'sm' | 'md' | 'lg'>('md');
+  // Button interactive demo
+  const [btnClicks, setBtnClicks] = useState<number>(0);
+  const [btnVariant, setBtnVariant] = useState<'primary' | 'secondary' | 'outline'>('primary');
+
+  // MCP test
+  const [mcpPingRes, setMcpPingRes] = useState<any>(null);
+  const [mcpTesting, setMcpTesting] = useState<boolean>(false);
 
   useEffect(() => {
     fetch('/api/tokens')
@@ -47,552 +53,495 @@ export default function LivingDocumentationPage() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
+  const handleTestMcpPing = async () => {
+    setMcpTesting(true);
+    try {
+      const res = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: {
+            name: 'get_tokens',
+            arguments: { workspaceId: 'adcn', projectId: 'my-design-system' },
+          },
+        }),
+      });
+      const data = await res.json();
+      setMcpPingRes(data);
+    } catch (err) {
+      setMcpPingRes({ error: String(err) });
+    } finally {
+      setMcpTesting(false);
+    }
+  };
+
   const colorTokens = tokens.filter((t) => t.category === 'color');
-  const spacingTokens = tokens.filter((t) => t.category === 'spacing');
-  const radiusTokens = tokens.filter((t) => t.category === 'borderRadius');
+  const spacingTokens = tokens.filter((t) => t.category === 'dimension' || t.category === 'spacing');
   const typographyTokens = tokens.filter((t) => t.category === 'typography');
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: docTheme === 'dark' ? '#060913' : '#f8fafc', color: docTheme === 'dark' ? '#f8fafc' : '#0f172a' }}>
-      {/* Docs Sidebar */}
-      <aside
-        style={{
-          width: '280px',
-          borderRight: `1px solid ${docTheme === 'dark' ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
-          background: docTheme === 'dark' ? '#0a0f1d' : '#ffffff',
-          padding: '28px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-          flexShrink: 0,
-        }}
-      >
-        <div>
-          <Link
-            href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              marginBottom: '16px',
-            }}
-          >
-            <ArrowLeft size={14} /> Back to Studio Dashboard
+    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] font-sans antialiased flex flex-col">
+      {/* 1. TOP HEADER (Matching https://learn.supernova.io) */}
+      <header className="h-14 bg-white border-b border-[#e2e8f0] px-6 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-2 text-decoration-none group">
+            <div className="w-7 h-7 rounded-md bg-[#2563eb] text-white flex items-center justify-center font-bold text-xs shadow-sm group-hover:bg-[#1d4ed8] transition-colors">
+              S
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-[#0f172a] tracking-tight">Supernova Learn</span>
+              <span className="text-[10px] text-[#64748b]">Shared draft &bull; v1.3.0</span>
+            </div>
           </Link>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                color: '#fff',
-              }}
-            >
-              ✦
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '15px' }}>Nova Living Docs</div>
-              <div style={{ fontSize: '11px', color: '#6366f1', fontWeight: 600 }}>v1.2.0 &bull; Single Source of Truth</div>
-            </div>
-          </div>
+          {/* Top Horizontal Links */}
+          <nav className="hidden md:flex items-center gap-5 text-xs font-medium text-[#475569]">
+            <span className="cursor-pointer hover:text-[#0f172a]">Welcome</span>
+            <span className="cursor-pointer hover:text-[#0f172a]">Design systems</span>
+            <span className="text-[#2563eb] font-semibold border-b-2 border-[#2563eb] py-4">AI</span>
+            <span className="cursor-pointer hover:text-[#0f172a]">Documentation</span>
+            <span className="cursor-pointer hover:text-[#0f172a]">Automation</span>
+            <span className="cursor-pointer hover:text-[#0f172a]">Releases</span>
+          </nav>
         </div>
 
-        {/* Navigation Sections */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Introduction
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <button
-                onClick={() => setActiveSection('intro-overview')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'intro-overview' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'intro-overview' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'intro-overview' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Getting Started
-              </button>
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#334155] rounded-md text-xs font-semibold transition-colors"
+          >
+            <ArrowLeft size={13} />
+            <span>Open Studio</span>
+          </Link>
+          <a
+            href="https://app.supernova.io"
+            target="_blank"
+            className="btn-primary text-xs py-1.5 px-3"
+          >
+            <span>Get started for free</span>
+          </a>
+        </div>
+      </header>
 
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Design Foundations
+      {/* 2. BODY LAYOUT (Sidebar Left + Content Right) */}
+      <div className="flex flex-1 max-w-7xl w-full mx-auto">
+        {/* SIDEBAR NAVIGATION */}
+        <aside className="w-64 flex-shrink-0 bg-white border-r border-[#e2e8f0] p-4 flex flex-col justify-between">
+          <div className="space-y-4">
+            {/* Search Box */}
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-2.5 text-[#94a3b8]" />
+              <input
+                type="text"
+                placeholder="Search documentation..."
+                className="w-full bg-[#f8fafc] border border-[#cbd5e1] pl-8 pr-3 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[#2563eb]"
+              />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <button
-                onClick={() => setActiveSection('foundations-colors')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'foundations-colors' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'foundations-colors' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'foundations-colors' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Color Palette & Tokens
-              </button>
-              <button
-                onClick={() => setActiveSection('foundations-spacing')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'foundations-spacing' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'foundations-spacing' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'foundations-spacing' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Spacing & Grid System
-              </button>
-              <button
-                onClick={() => setActiveSection('foundations-radii')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'foundations-radii' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'foundations-radii' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'foundations-radii' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Border Radii & Shapes
-              </button>
-              <button
-                onClick={() => setActiveSection('foundations-typography')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'foundations-typography' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'foundations-typography' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'foundations-typography' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Typography Scale
-              </button>
-            </div>
-          </div>
 
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Components
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <button
-                onClick={() => setActiveSection('components-button')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'components-button' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'components-button' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'components-button' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Button
-              </button>
-              <button
-                onClick={() => setActiveSection('components-badge')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'components-badge' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'components-badge' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'components-badge' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Badge
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Developer & AI Handoff
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <button
-                onClick={() => setActiveSection('dev-mcp')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'dev-mcp' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'dev-mcp' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'dev-mcp' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                AI Coding Agent / MCP
-              </button>
-              <button
-                onClick={() => setActiveSection('dev-install')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: activeSection === 'dev-install' ? 700 : 500,
-                  textAlign: 'left',
-                  background: activeSection === 'dev-install' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: activeSection === 'dev-install' ? '#6366f1' : 'inherit',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Continuous Delivery Pipelines
-              </button>
-            </div>
-          </div>
-        </nav>
-      </aside>
-
-      {/* Main Documentation Viewer */}
-      <main style={{ flex: 1, padding: '40px 60px', maxWidth: '960px', overflowY: 'auto' }}>
-        {/* Section 1: Introduction */}
-        {activeSection === 'intro-overview' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6366f1', fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>
-              <BookOpen size={16} /> INTRODUCTION
-            </div>
-            <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.02em' }}>
-              Nova Design System Guidelines
-            </h1>
-            <p style={{ fontSize: '16px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '32px' }}>
-              Nova is Acme Corporation's unified design system. Built on W3C Design Tokens Community Group standards, it serves as the single source of truth connecting our Figma design libraries directly to production web apps, iOS applications, Android apps, and AI coding agents via the Model Context Protocol (MCP).
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' }}>
-              <div className="glass-panel" style={{ padding: '20px' }}>
-                <Layers size={20} color="#6366f1" style={{ marginBottom: '8px' }} />
-                <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '4px' }}>W3C DTCG Format</div>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Universal token taxonomy across all brand themes.</div>
-              </div>
-
-              <div className="glass-panel" style={{ padding: '20px' }}>
-                <Terminal size={20} color="#06b6d4" style={{ marginBottom: '8px' }} />
-                <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '4px' }}>Automated Git PRs</div>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Tokens export directly to GitHub repositories.</div>
-              </div>
-
-              <div className="glass-panel" style={{ padding: '20px' }}>
-                <Sparkles size={20} color="#10b981" style={{ marginBottom: '8px' }} />
-                <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '4px' }}>MCP Agent Protocol</div>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Grounds Claude Code & Cursor in real project tokens.</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section 2: Colors */}
-        {activeSection === 'foundations-colors' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6366f1', fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>
-              <Layers size={16} /> FOUNDATIONS
-            </div>
-            <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.02em' }}>
-              Color System
-            </h1>
-            <p style={{ fontSize: '16px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '32px' }}>
-              Our color system uses a two-tier token hierarchy: <strong>Primitives</strong> (raw palette values) and <strong>Semantic Tokens</strong> (purpose-bound aliases that dynamically adapt to theme modes).
-            </p>
-
-            <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px' }}>Semantic Brand & Text Tokens</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '40px' }}>
-              {colorTokens.filter((t) => t.isAlias || t.path.includes('brand') || t.path.includes('text')).map((token) => (
-                <div key={token.id} className="glass-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '8px',
-                      background: token.resolvedValue,
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: '14px' }}>{token.path}</div>
-                    <div style={{ fontSize: '12px', color: '#6ee7b7', fontFamily: 'monospace' }}>{token.resolvedValue}</div>
-                    {token.isAlias && (
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Alias: {token.rawValue}</div>
-                    )}
-                  </div>
+            {/* Tree Categories */}
+            <div className="space-y-3 text-xs">
+              <div>
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
+                  AI & Agent Contexts
+                </div>
+                <div className="space-y-0.5 mt-1">
                   <button
-                    onClick={() => copyToClipboard(`var(--${token.path.replace(/\./g, '-')})`, token.id)}
-                    className="btn-secondary"
-                    style={{ padding: '6px 10px', fontSize: '12px' }}
+                    onClick={() => setActiveSection('ai-contexts-101')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                      activeSection === 'ai-contexts-101'
+                        ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
+                        : 'text-[#475569] hover:bg-[#f8fafc]'
+                    }`}
                   >
-                    {copiedKey === token.id ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                    Contexts 101
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSection('ai-mcp-101')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                      activeSection === 'ai-mcp-101'
+                        ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
+                        : 'text-[#475569] hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    Model Context Protocol (MCP)
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSection('ai-feedback')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                      activeSection === 'ai-feedback'
+                        ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
+                        : 'text-[#475569] hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    Feedback & Adoption
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px' }}>Primitive Palette</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-              {colorTokens.filter((t) => !t.isAlias && !t.path.includes('brand') && !t.path.includes('text')).map((token) => (
-                <div key={token.id} className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '6px',
-                      background: token.resolvedValue,
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '12px' }}>{token.name}</div>
-                    <div style={{ fontSize: '11px', color: '#6ee7b7', fontFamily: 'monospace' }}>{token.resolvedValue}</div>
-                  </div>
+              <div>
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
+                  Design Foundations
                 </div>
-              ))}
+                <div className="space-y-0.5 mt-1">
+                  <button
+                    onClick={() => setActiveSection('tokens-colors')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                      activeSection === 'tokens-colors'
+                        ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
+                        : 'text-[#475569] hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    Color Tokens & Scales
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSection('tokens-dimensions')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                      activeSection === 'tokens-dimensions'
+                        ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
+                        : 'text-[#475569] hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    Spacing & Dimensions
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
+                  Components
+                </div>
+                <div className="space-y-0.5 mt-1">
+                  <button
+                    onClick={() => setActiveSection('components-library')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                      activeSection === 'components-library'
+                        ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
+                        : 'text-[#475569] hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    Component Library
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Section 3: Spacing */}
-        {activeSection === 'foundations-spacing' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6366f1', fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>
-              <Layers size={16} /> FOUNDATIONS
+          <div className="pt-4 border-t border-[#f1f5f9] text-[11px] text-[#64748b]">
+            Powered by Supernova Platform &bull; 2026
+          </div>
+        </aside>
+
+        {/* MAIN DOCUMENTATION CONTENT */}
+        <main className="flex-1 p-8 overflow-y-auto max-w-4xl">
+          {/* SECTION: CONTEXTS 101 (Authentic article from Supernova) */}
+          {activeSection === 'ai-contexts-101' && (
+            <div className="space-y-6">
+              {/* Header Banner */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-8 shadow-sm">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#2563eb]">AI &bull; Contexts</span>
+                <h1 className="text-2xl font-bold text-[#0f172a] mt-1">Contexts 101</h1>
+                <p className="text-sm text-[#475569] mt-2 leading-relaxed">
+                  Manage and distribute organizational knowledge across AI tools, workflows, and teams.
+                </p>
+              </div>
+
+              {/* What are contexts? */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-3">
+                <h2 className="text-base font-bold text-[#0f172a]">What are contexts?</h2>
+                <p className="text-xs text-[#475569] leading-relaxed">
+                  Contexts are reusable units of knowledge that provide guidance, instructions, documentation, and organizational expertise to humans and AI systems.
+                </p>
+                <p className="text-xs text-[#475569] leading-relaxed">
+                  Your contexts act as the source of truth for information that needs to be shared consistently across multiple destinations.
+                </p>
+
+                <div className="pt-2">
+                  <strong className="text-xs font-semibold text-[#0f172a]">A context can contain:</strong>
+                  <ul className="list-disc list-inside text-xs text-[#475569] mt-1.5 space-y-1">
+                    <li>Product documentation</li>
+                    <li>Engineering standards</li>
+                    <li>Design guidelines</li>
+                    <li>Team processes</li>
+                    <li>Domain knowledge</li>
+                    <li>Operating procedures</li>
+                    <li>Custom instructions</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Why use contexts? */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-3">
+                <h2 className="text-base font-bold text-[#0f172a]">Why use contexts?</h2>
+                <p className="text-xs text-[#475569] leading-relaxed">
+                  Teams often duplicate the same knowledge across documentation, prompts, AI assistants, and internal tools. Contexts solve this by allowing teams to maintain information once and distribute it everywhere it is needed. Contexts allow you to:
+                </p>
+                <ul className="list-disc list-inside text-xs text-[#475569] space-y-1">
+                  <li>Keep information consistent and reduce duplication across tools</li>
+                  <li>Maintain knowledge and instructions more easily</li>
+                  <li>Improve the quality of AI responses</li>
+                  <li>Control the distribution of knowledge to appropriate teams</li>
+                </ul>
+              </div>
+
+              {/* Types of Contexts Table (Extracted verbatim from Supernova official documentation) */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                <h2 className="text-base font-bold text-[#0f172a]">Types of Contexts</h2>
+                <p className="text-xs text-[#475569]">
+                  Supernova supports two main context tiers: Design system context and Workspace context.
+                </p>
+
+                <div className="overflow-x-auto border border-[#e2e8f0] rounded-lg">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] font-semibold">
+                        <th className="py-2.5 px-4">Content Type</th>
+                        <th className="py-2.5 px-4">Design System Context</th>
+                        <th className="py-2.5 px-4">Workspace Context</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f1f5f9] text-[#334155]">
+                      <tr>
+                        <td className="py-2.5 px-4 font-medium">Documentation pages</td>
+                        <td className="py-2.5 px-4 text-[#10b981] font-semibold">Yes</td>
+                        <td className="py-2.5 px-4 text-[#94a3b8]">—</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-4 font-medium">Design tokens</td>
+                        <td className="py-2.5 px-4 text-[#10b981] font-semibold">Yes</td>
+                        <td className="py-2.5 px-4 text-[#94a3b8]">—</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-4 font-medium">Token themes</td>
+                        <td className="py-2.5 px-4 text-[#10b981] font-semibold">Yes</td>
+                        <td className="py-2.5 px-4 text-[#94a3b8]">—</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-4 font-medium">Assets</td>
+                        <td className="py-2.5 px-4 text-[#10b981] font-semibold">Yes</td>
+                        <td className="py-2.5 px-4 text-[#94a3b8]">—</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-4 font-medium">Code components</td>
+                        <td className="py-2.5 px-4 text-[#10b981] font-semibold">Yes</td>
+                        <td className="py-2.5 px-4 text-[#94a3b8]">—</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-4 font-medium">Files and Agent skills</td>
+                        <td className="py-2.5 px-4 text-[#10b981] font-semibold">Yes</td>
+                        <td className="py-2.5 px-4 text-[#10b981] font-semibold">Yes</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Distribution & MCP Test Widget */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-[#0f172a]">Live MCP Distribution Endpoint</h2>
+                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-[#ecfdf5] text-[#059669] rounded-full">
+                    Production Ready
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value="https://mcp.supernova.io/mcp/c/350527-my-design-system"
+                    className="flex-1 bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs font-mono text-[#0f172a]"
+                  />
+                  <button
+                    onClick={() =>
+                      copyToClipboard(
+                        'https://mcp.supernova.io/mcp/c/350527-my-design-system',
+                        'doc_mcp_url'
+                      )
+                    }
+                    className="btn-secondary text-xs"
+                  >
+                    {copiedKey === 'doc_mcp_url' ? <Check size={14} className="text-[#10b981]" /> : <Copy size={14} />}
+                    <span>{copiedKey === 'doc_mcp_url' ? 'Copied' : 'Copy'}</span>
+                  </button>
+                  <button
+                    onClick={handleTestMcpPing}
+                    disabled={mcpTesting}
+                    className="btn-primary text-xs"
+                  >
+                    {mcpTesting ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
+                    <span>{mcpTesting ? 'Testing...' : 'Test Endpoint'}</span>
+                  </button>
+                </div>
+
+                {mcpPingRes && (
+                  <div className="p-3 bg-[#0f172a] text-[#f8fafc] rounded-lg text-[11px] font-mono overflow-x-auto max-h-48">
+                    <pre>{JSON.stringify(mcpPingRes, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
             </div>
-            <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.02em' }}>
-              Spacing & Grid Scale
-            </h1>
-            <p style={{ fontSize: '16px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '32px' }}>
-              Nova relies on an 8-point harmonic spacing scale with 4px half-steps for compact UI density. Never hardcode arbitrary pixel margins or paddings.
-            </p>
+          )}
 
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              {spacingTokens.map((t) => (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <div style={{ width: '140px', fontWeight: 700, fontSize: '14px' }}>{t.path}</div>
-                  <div style={{ width: '80px', fontFamily: 'monospace', color: '#6ee7b7' }}>{t.resolvedValue}</div>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          {/* SECTION: COLOR TOKENS */}
+          {activeSection === 'tokens-colors' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm">
+                <h1 className="text-xl font-bold text-[#0f172a]">Color System & Semantic Tokens</h1>
+                <p className="text-xs text-[#475569] mt-1">
+                  Our color system maintains strict semantic separation between base scales and functional theme aliases.
+                </p>
+              </div>
+
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                  Registered Color Tokens ({colorTokens.length})
+                </h2>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {colorTokens.map((t) => (
                     <div
-                      style={{
-                        height: '16px',
-                        width: t.resolvedValue,
-                        background: '#6366f1',
-                        borderRadius: '2px',
-                        opacity: 0.9,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Section 4: Border Radii */}
-        {activeSection === 'foundations-radii' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6366f1', fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>
-              <Layers size={16} /> FOUNDATIONS
-            </div>
-            <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.02em' }}>
-              Border Radius & Shapes
-            </h1>
-            <p style={{ fontSize: '16px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '32px' }}>
-              Consistent corner curves convey hierarchy and tactile feedback across cards, inputs, buttons, and pill tags.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-              {radiusTokens.map((t) => (
-                <div key={t.id} className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
-                  <div
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      border: '2px solid #06b6d4',
-                      borderRadius: t.resolvedValue === '9999px' ? '50%' : t.resolvedValue,
-                      margin: '0 auto 16px',
-                      background: 'rgba(6, 182, 212, 0.1)',
-                    }}
-                  />
-                  <div style={{ fontWeight: 700, fontSize: '14px' }}>{t.name}</div>
-                  <div style={{ fontSize: '12px', color: '#6ee7b7', fontFamily: 'monospace', marginTop: '4px' }}>{t.resolvedValue}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Section 5: Component - Button */}
-        {activeSection === 'components-button' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6366f1', fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>
-              <Box size={16} /> COMPONENTS
-            </div>
-            <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.02em' }}>
-              Button Component
-            </h1>
-            <p style={{ fontSize: '16px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '28px' }}>
-              Buttons prompt users to take action and initiate key tasks. They feature high-contrast states, keyboard focus rings, and strict design token bindings.
-            </p>
-
-            {/* Interactive Sandbox */}
-            <div className="glass-panel" style={{ padding: '28px', marginBottom: '36px' }}>
-              <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Variant:</span>
-                  {(['primary', 'secondary', 'ghost'] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setButtonVariant(v)}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        background: buttonVariant === v ? '#6366f1' : 'transparent',
-                        color: buttonVariant === v ? '#fff' : 'var(--text-secondary)',
-                        border: '1px solid',
-                        borderColor: buttonVariant === v ? '#6366f1' : 'var(--border-subtle)',
-                      }}
+                      key={t.id}
+                      className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-between"
                     >
-                      {v}
-                    </button>
-                  ))}
-                </div>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-md border border-[#cbd5e1] shadow-xs"
+                          style={{ backgroundColor: t.resolvedValue || t.rawValue }}
+                        />
+                        <div>
+                          <div className="text-xs font-mono font-bold text-[#0f172a]">{t.path}</div>
+                          <div className="text-[11px] font-mono text-[#2563eb]">{t.resolvedValue || t.rawValue}</div>
+                        </div>
+                      </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Size:</span>
-                  {(['sm', 'md', 'lg'] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setButtonSize(s)}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        background: buttonSize === s ? '#6366f1' : 'transparent',
-                        color: buttonSize === s ? '#fff' : 'var(--text-secondary)',
-                        border: '1px solid',
-                        borderColor: buttonSize === s ? '#6366f1' : 'var(--border-subtle)',
-                      }}
-                    >
-                      {s}
-                    </button>
+                      <button
+                        onClick={() => copyToClipboard(`var(--${t.path.replace(/\./g, '-')})`, t.id)}
+                        className="btn-secondary text-xs p-1.5"
+                      >
+                        {copiedKey === t.id ? <Check size={12} className="text-[#10b981]" /> : <Copy size={12} />}
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
+            </div>
+          )}
 
-              <div style={{ background: '#090d16', padding: '36px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <button
-                  className={buttonVariant === 'primary' ? 'btn-primary' : buttonVariant === 'secondary' ? 'btn-secondary' : 'btn-ghost'}
-                  style={{
-                    padding: buttonSize === 'sm' ? '6px 12px' : buttonSize === 'lg' ? '12px 24px' : '10px 18px',
-                    fontSize: buttonSize === 'sm' ? '12px' : buttonSize === 'lg' ? '16px' : '14px',
-                  }}
-                >
-                  Interactive {buttonVariant} Button ({buttonSize})
-                </button>
+          {/* SECTION: SPACING & DIMENSIONS */}
+          {activeSection === 'tokens-dimensions' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm">
+                <h1 className="text-xl font-bold text-[#0f172a]">Spacing & Dimension Scale</h1>
+                <p className="text-xs text-[#475569] mt-1">
+                  Built on a strict 4px/8px modular geometry for consistent layouts across platforms.
+                </p>
+              </div>
+
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                  Dimension Tokens ({spacingTokens.length})
+                </h2>
+
+                <div className="space-y-2">
+                  {spacingTokens.map((t) => (
+                    <div
+                      key={t.id}
+                      className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="text-xs font-mono font-bold text-[#0f172a]">{t.path}</div>
+                        <div className="text-[11px] font-mono text-[#64748b]">{t.rawValue}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="h-4 bg-[#2563eb] rounded-xs"
+                          style={{ width: `${Math.min(parseInt(t.rawValue) || 16, 120)}px` }}
+                        />
+                        <button
+                          onClick={() => copyToClipboard(`var(--${t.path.replace(/\./g, '-')})`, t.id)}
+                          className="btn-secondary text-xs p-1.5"
+                        >
+                          {copiedKey === t.id ? <Check size={12} className="text-[#10b981]" /> : <Copy size={12} />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Code Snippet */}
-            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Usage Example (React JSX)</h2>
-            <pre style={{ background: '#090d16', padding: '16px', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', color: '#a5b4fc', marginBottom: '32px' }}>
-{`<Button variant="${buttonVariant}" size="${buttonSize}">
-  Click Action
-</Button>`}
-            </pre>
-          </div>
-        )}
+          {/* SECTION: COMPONENT LIBRARY */}
+          {activeSection === 'components-library' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm">
+                <h1 className="text-xl font-bold text-[#0f172a]">Component Library</h1>
+                <p className="text-xs text-[#475569] mt-1">
+                  Living component implementations styled with Supernova token primitives.
+                </p>
+              </div>
 
-        {/* Section 6: AI Coding Agent / MCP Setup */}
-        {activeSection === 'dev-mcp' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6366f1', fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>
-              <Sparkles size={16} /> AI INTEGRATION
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                <h2 className="text-sm font-bold text-[#0f172a]">Interactive Button</h2>
+                <div className="p-8 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => setBtnClicks((c) => c + 1)}
+                    className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                  >
+                    Primary Button ({btnClicks} clicks)
+                  </button>
+
+                  <button
+                    onClick={() => setBtnClicks((c) => c + 1)}
+                    className="px-4 py-2 bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] text-[#0f172a] rounded-lg text-xs font-semibold shadow-xs transition-all"
+                  >
+                    Secondary Button
+                  </button>
+                </div>
+              </div>
             </div>
-            <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.02em' }}>
-              Model Context Protocol (MCP) Setup
-            </h1>
-            <p style={{ fontSize: '16px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '28px' }}>
-              Give your AI coding assistant (Cursor, Claude Code, AGY) direct, live access to your design tokens, component specifications, and deterministic compliance linter.
-            </p>
+          )}
 
-            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Cursor / Claude Desktop Config</h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-              Add NovaDesign's MCP server to your <code>claude_desktop_config.json</code> or <code>.cursor/mcp.json</code>:
-            </p>
+          {/* SECTION: MCP SETUP GUIDE */}
+          {activeSection === 'ai-mcp-101' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm">
+                <h1 className="text-xl font-bold text-[#0f172a]">Connecting Model Context Protocol (MCP)</h1>
+                <p className="text-xs text-[#475569] mt-1">
+                  Connect Supernova directly to Cursor, Claude Code, Codex, and Windsurf to feed live design tokens to AI coding agents.
+                </p>
+              </div>
 
-            <pre style={{ background: '#090d16', padding: '20px', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', color: '#6ee7b7', marginBottom: '32px' }}>
-{`{
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-3">
+                <h2 className="text-sm font-bold text-[#0f172a]">Cursor Configuration (.cursor/mcp.json)</h2>
+                <div className="p-3 bg-[#0f172a] text-[#f8fafc] rounded-lg text-xs font-mono">
+                  <pre>{`{
   "mcpServers": {
-    "novadesign": {
-      "command": "node",
-      "args": [
-        "/Users/prudhviraj/Desktop/supernovaclone/node_modules/.bin/tsx",
-        "/Users/prudhviraj/Desktop/supernovaclone/src/mcp/server.ts"
-      ]
+    "supernova": {
+      "url": "https://mcp.supernova.io/mcp/c/350527-my-design-system",
+      "transport": "sse"
     }
   }
-}`}
-            </pre>
+}`}</pre>
+                </div>
+              </div>
 
-            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Available Tools for AI Agents</h2>
-            <div className="glass-panel" style={{ padding: '20px' }}>
-              <ul style={{ paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
-                <li><code>get_tokens</code>: Fetch semantic tokens by category.</li>
-                <li><code>list_components</code>: Inspect component props, variants, and dependencies.</li>
-                <li><code>check_compliance</code>: Run deterministic design system linter on agent-written code.</li>
-                <li><code>generate_code</code>: Produce CSS, TS, Swift, or Kotlin code artifacts.</li>
-                <li><code>import_figma_variables</code>: Trigger Figma variable synchronization and diff.</li>
-              </ul>
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-3">
+                <h2 className="text-sm font-bold text-[#0f172a]">Claude Code CLI Connection</h2>
+                <div className="p-3 bg-[#0f172a] text-[#f8fafc] rounded-lg text-xs font-mono">
+                  <pre>claude mcp add supernova -- sse https://mcp.supernova.io/mcp/c/350527-my-design-system</pre>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

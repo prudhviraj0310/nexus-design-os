@@ -7,10 +7,11 @@ import { FlatToken } from '@/core/tokens/types';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { codeContent, filePath = 'Component.tsx' } = body;
+    const codeContent = body.codeContent || body.code;
+    const filePath = body.filePath || body.filename || 'Component.tsx';
 
     if (!codeContent) {
-      return NextResponse.json({ success: false, error: 'codeContent is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'codeContent or code is required' }, { status: 400 });
     }
 
     const { db } = await getDb();
@@ -36,8 +37,15 @@ export async function POST(request: Request) {
       tokens: flatTokens,
     });
 
+    const score = Math.max(0, 100 - report.errorCount * 25 - report.warningCount * 10);
+
     return NextResponse.json({
       success: true,
+      score,
+      totalFindings: report.totalFindings,
+      errorCount: report.errorCount,
+      warningCount: report.warningCount,
+      findings: report.findings,
       report,
     });
   } catch (err: any) {

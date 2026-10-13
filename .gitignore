@@ -1,8 +1,33 @@
+# Dependencies
 node_modules/
+/.pnp
+.pnp.js
+
+# Build & outputs
 .next/
+out/
 dist/
+build/
+tsconfig.tsbuildinfo
+
+# Local Database
 .data/
-*.log
+
+# Environment
 .env
-.env.local
+.env*.local
+.env.production
+.env.development
+
+# Logs & temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
 .DS_Store
+
+# Crawlers & scrape artifacts
+.cloned_sites/
+.cloners/
+scratch-audit-test.tsx
+test-all-endpoints.sh
