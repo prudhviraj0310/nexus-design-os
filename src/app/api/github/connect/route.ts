@@ -15,9 +15,12 @@ export async function GET(request: Request) {
     const tokenFromHeader = request.headers.get('x-github-token') || request.headers.get('authorization')?.replace(/^Bearer\s+/, '');
     const token = tokenFromCookie || tokenFromHeader || process.env.GITHUB_TOKEN;
 
+    const oauthAvailable = Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
+
     if (!token) {
       return NextResponse.json({
         connected: false,
+        oauthAvailable,
         message: 'No GitHub token configured or connected.',
       });
     }

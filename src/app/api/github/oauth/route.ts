@@ -5,13 +5,7 @@ export async function GET(request: Request) {
   const clientId = process.env.GITHUB_CLIENT_ID;
 
   if (!clientId) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'GITHUB_CLIENT_ID is not configured in environment variables. Please use the Fast Connect Personal Access Token method or configure GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.',
-      },
-      { status: 400 }
-    );
+    return NextResponse.redirect(`${origin}/?github_error=missing_oauth_credentials`);
   }
 
   const redirectUri = `${origin}/api/github/oauth/callback`;

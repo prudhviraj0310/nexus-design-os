@@ -172,6 +172,8 @@ export default function SupernovaPlatform() {
   const [showConnectModal, setShowConnectModal] = useState<boolean>(false);
   const [customGithubToken, setCustomGithubToken] = useState<string>('');
   const [connectingGithub, setConnectingGithub] = useState<boolean>(false);
+  const [oauthAvailable, setOauthAvailable] = useState<boolean>(false);
+  const [oauthNotice, setOauthNotice] = useState<string | null>(null);
 
   // Audit state
   const [auditCode, setAuditCode] = useState<string>(`// Testing component compliance against Supernova design tokens
@@ -329,6 +331,7 @@ export function PrimaryCard() {
     try {
       const res = await fetch('/api/github/connect');
       const data = await res.json();
+      setOauthAvailable(Boolean(data.oauthAvailable));
       if (data.connected && data.user) {
         setGithubConnected(true);
         setGithubUser(data.user);
@@ -359,6 +362,7 @@ export function PrimaryCard() {
         setGithubUser(data.user);
         setCustomGithubToken('');
         setShowConnectModal(false);
+        setOauthNotice(null);
         await loadGithubRepos();
       } else {
         alert(`Connection failed: ${data.error}`);
@@ -396,7 +400,13 @@ export function PrimaryCard() {
         checkGithubStatus();
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (urlParams.get('github_error')) {
-        alert(`GitHub OAuth error: ${urlParams.get('github_error')}`);
+        const err = urlParams.get('github_error');
+        if (err === 'missing_oauth_credentials') {
+          setOauthNotice('GitHub OAuth App is not configured on this server (GITHUB_CLIENT_ID missing in environment). Please use Fast Connect with your Personal Access Token below!');
+          setShowConnectModal(true);
+        } else {
+          alert(`GitHub OAuth error: ${err}`);
+        }
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
@@ -2776,91 +2786,140 @@ Endpoint: \`${mcpEndpointUrl}\`
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#0f172a]">Connect GitHub Account</h3>
-                  <p className="text-xs text-[#64748b]">Authorize Nexus Design OS to deliver pull requests</p>
+                  <p className="text-xs text-[#64748b]">Authorize Nexus Design OS to deliver automated pull requests</p>
                 </div>
               </div>
               <button
-                onClick={() => setShowConnectModal(false)}
+                onClick={() => {
+                  setShowConnectModal(false);
+                  setOauthNotice(null);
+                }}
                 className="text-[#94a3b8] hover:text-[#0f172a] text-lg font-bold p-1"
               >
                 ✕
               </button>
             </div>
 
-            {/* Option 1: 1-Click OAuth */}
-            <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl space-y-3">
+            {/* OAUTH NOTICE BANNER IF TRIGGERED */}
+            {oauthNotice && (
+              <div className="p-3 bg-[#fffbeb] border border-[#fef3c7] rounded-xl text-xs text-[#b45309] flex items-start gap-2.5">
+                <AlertTriangle size={16} className="text-[#f59e0b] shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-semibold text-[#92400e]">OAuth App Not Configured Yet</div>
+                  <div className="text-[11px] leading-relaxed text-[#b45309]">
+                    {oauthNotice}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Option 1: Fast Connect (Personal Access Token) - Primary, works immediately */}
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                  Option 1: Sign in with GitHub
+                  Option 1: Instant Fast Connect (Token)
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#eff6ff] text-[#2563eb]">
-                  Recommended
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#ecfdf5] text-[#059669]">
+                  Instant Setup
                 </span>
               </div>
               <p className="text-xs text-[#64748b]">
-                Authenticate directly with GitHub OAuth. Automatically connects repo access for seamless 1-click token delivery.
+                Paste a GitHub Personal Access Token to connect instantly. Your token is securely stored in a session cookie.
               </p>
-              <a
-                href="/api/github/oauth"
-                className="w-full btn-primary py-2 text-xs flex items-center justify-center gap-2 bg-[#0f172a] hover:bg-[#1e293b]"
-              >
-                <IntegrationLogo name="github" size={16} className="brightness-200 invert" />
-                <span>Continue with GitHub OAuth</span>
-                <ArrowRight size={13} />
-              </a>
+
+              <form onSubmit={handleConnectGithubToken} className="space-y-3 text-xs">
+                <div>
+                  <label className="font-semibold text-[#475569] block mb-1">
+                    GitHub Personal Access Token (PAT)
+                  </label>
+                  <input
+                    type="password"
+                    value={customGithubToken}
+                    onChange={(e) => setCustomGithubToken(e.target.value)}
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_..."
+                    className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg font-mono text-xs focus:outline-none focus:border-[#2563eb]"
+                    required
+                  />
+                  <div className="flex items-center justify-between mt-1.5 text-[11px] text-[#64748b]">
+                    <span>Requires `repo` permissions to open pull requests.</span>
+                    <a
+                      href="https://github.com/settings/tokens/new?scopes=repo&description=Nexus+Design+OS"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[#2563eb] hover:underline flex items-center gap-0.5 font-medium"
+                    >
+                      Generate 1-Click Token ↗
+                    </a>
+                  </div>
+                </div>
+
+                <div className="pt-1 flex items-center justify-end gap-2">
+                  <button
+                    type="submit"
+                    disabled={connectingGithub || !customGithubToken.trim()}
+                    className="w-full btn-primary text-xs py-2 bg-[#2563eb] hover:bg-[#1d4ed8] flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>{connectingGithub ? 'Verifying & Connecting...' : 'Connect GitHub with Token'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
 
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex items-center justify-center py-1">
               <div className="border-t border-[#e2e8f0] w-full"></div>
               <span className="bg-white px-3 text-[11px] uppercase tracking-wider text-[#94a3b8] absolute font-semibold">
-                Or Fast Connect with Token
+                Or Sign in with GitHub App
               </span>
             </div>
 
-            {/* Option 2: Personal Access Token Fast Connect */}
-            <form onSubmit={handleConnectGithubToken} className="space-y-3 text-xs">
-              <div>
-                <label className="font-semibold text-[#475569] block mb-1">
-                  GitHub Personal Access Token (PAT)
-                </label>
-                <input
-                  type="password"
-                  value={customGithubToken}
-                  onChange={(e) => setCustomGithubToken(e.target.value)}
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_..."
-                  className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg font-mono text-xs focus:outline-none focus:border-[#2563eb]"
-                  required
-                />
-                <div className="flex items-center justify-between mt-1 text-[11px] text-[#64748b]">
-                  <span>Requires `repo` scope to create PRs.</span>
-                  <a
-                    href="https://github.com/settings/tokens/new?scopes=repo&description=Nexus+Design+OS"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[#2563eb] hover:underline flex items-center gap-0.5 font-medium"
-                  >
-                    Generate Token ↗
-                  </a>
-                </div>
+            {/* Option 2: 1-Click GitHub OAuth App */}
+            <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
+                  Option 2: GitHub OAuth App
+                </span>
+                {oauthAvailable ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#eff6ff] text-[#2563eb]">
+                    Configured
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#f1f5f9] text-[#64748b]">
+                    Requires .env.local setup
+                  </span>
+                )}
               </div>
+              <p className="text-xs text-[#64748b]">
+                {oauthAvailable
+                  ? 'Sign in via GitHub OAuth to authorize repository access directly.'
+                  : 'Requires GITHUB_CLIENT_ID & GITHUB_CLIENT_SECRET configured in .env.local.'}
+              </p>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              {oauthAvailable ? (
+                <a
+                  href="/api/github/oauth"
+                  className="w-full btn-secondary py-2 text-xs flex items-center justify-center gap-2 bg-[#0f172a] text-white hover:bg-[#1e293b]"
+                >
+                  <IntegrationLogo name="github" size={16} className="brightness-200 invert" />
+                  <span>Continue with GitHub OAuth</span>
+                  <ArrowRight size={13} />
+                </a>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setShowConnectModal(false)}
-                  className="btn-secondary text-xs"
+                  onClick={() => {
+                    alert(
+                      'GitHub OAuth requires registering an OAuth App at https://github.com/settings/developers and setting GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env.local.\n\nFor immediate connection, please use Option 1 (Fast Connect) above with a Personal Access Token!'
+                    );
+                  }}
+                  className="w-full btn-secondary py-2 text-xs flex items-center justify-center gap-2 text-[#64748b] hover:text-[#0f172a]"
                 >
-                  Cancel
+                  <IntegrationLogo name="github" size={16} />
+                  <span>Setup GitHub OAuth App Instructions</span>
+                  <ExternalLink size={12} />
                 </button>
-                <button
-                  type="submit"
-                  disabled={connectingGithub || !customGithubToken.trim()}
-                  className="btn-primary text-xs px-4 py-2"
-                >
-                  {connectingGithub ? 'Connecting...' : 'Connect Token'}
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
           </div>
         </div>
       )}

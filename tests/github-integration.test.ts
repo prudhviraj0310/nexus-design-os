@@ -202,13 +202,12 @@ describe('GitHub Web Integration API Routes', () => {
   });
 
   describe('GET /api/github/oauth', () => {
-    it('returns 400 with instructions when GITHUB_CLIENT_ID is not configured', async () => {
+    it('redirects back to origin with error parameter when GITHUB_CLIENT_ID is not configured', async () => {
       const req = new Request('http://localhost:3000/api/github/oauth');
       const res = await getOauth(req);
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.success).toBe(false);
-      expect(data.error).toContain('GITHUB_CLIENT_ID is not configured');
+      expect(res.status).toBe(307);
+      const location = res.headers.get('location');
+      expect(location).toContain('github_error=missing_oauth_credentials');
     });
 
     it('redirects to GitHub OAuth authorize when GITHUB_CLIENT_ID is configured', async () => {
