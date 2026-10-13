@@ -8,6 +8,11 @@ import { exportToTypeScript } from '@/core/exporters/typescript';
 import { GitHubDeliveryEngine } from '@/core/delivery/github';
 import { validateApiAuth } from '@/server/auth';
 import { env } from '@/server/env';
+import {
+  getGitHubInstallation,
+  getInstallationAccessToken,
+  getInstallationRepositories,
+} from '@/core/github/app';
 
 export async function POST(request: Request) {
   try {
@@ -36,20 +41,57 @@ export async function POST(request: Request) {
       );
     }
 
-    let tokenFromCookie: string | undefined;
+    // 1. Check GitHub App installation token
+    let activeToken = body.githubToken;
+    let isAppAuthorized = false;
+
+    const installation = getGitHubInstallation();
+    let installationIdFromCookie: string | undefined;
     try {
       const cookieStore = await cookies();
-      tokenFromCookie = cookieStore.get('nexus_github_token')?.value;
+      installationIdFromCookie = cookieStore.get('nexus_github_installation_id')?.value;
     } catch {
       const cookieHeader = request.headers.get('cookie') || '';
-      const match = cookieHeader.match(/nexus_github_token=([^;]+)/);
-      tokenFromCookie = match ? match[1] : undefined;
+      const match = cookieHeader.match(/nexus_github_installation_id=([^;]+)/);
+      installationIdFromCookie = match ? match[1] : undefined;
     }
-    const githubToken = body.githubToken || tokenFromCookie || process.env.GITHUB_TOKEN;
+    const activeInstallationId = installationIdFromCookie || installation?.installationId;
+
+    if (activeInstallationId) {
+      const tokenResult = await getInstallationAccessToken(activeInstallationId);
+      if (tokenResult) {
+        activeToken = tokenResult.token;
+        try {
+          const repos = await getInstallationRepositories(activeToken);
+          const inInstall = repos.some(
+            (r: any) => r.fullName.toLowerCase() === `${repoOwner}/${repoName}`.toLowerCase()
+          );
+          if (inInstall) {
+            isAppAuthorized = true;
+          }
+        } catch {}
+      }
+    }
+
+    // 2. Fall back to user PAT or environment token if not using GitHub App
+    if (!activeToken) {
+      let tokenFromCookie: string | undefined;
+      try {
+        const cookieStore = await cookies();
+        tokenFromCookie = cookieStore.get('nexus_github_token')?.value;
+      } catch {
+        const cookieHeader = request.headers.get('cookie') || '';
+        const match = cookieHeader.match(/nexus_github_token=([^;]+)/);
+        tokenFromCookie = match ? match[1] : undefined;
+      }
+      activeToken = tokenFromCookie || process.env.GITHUB_TOKEN;
+    }
+
+    const githubToken = activeToken;
 
     // Check if token belongs to repository owner or user has access
     let isOwnerOfRepo = false;
-    if (githubToken) {
+    if (githubToken && !isAppAuthorized) {
       try {
         const userRes = await fetch('https://api.github.com/user', {
           headers: {
@@ -74,7 +116,7 @@ export async function POST(request: Request) {
     const rawAllowlist = env().GITHUB_ALLOWED_REPOSITORIES || process.env.GITHUB_ALLOWED_REPOSITORIES || 'acme-corp/web-platform-core,acme-corp/design-tokens-repo,acme-corp/design-system';
     const allowedList = rawAllowlist.split(',').map((s) => s.trim().toLowerCase());
 
-    const isAuthorized = isOwnerOfRepo || allowedList.some((pattern) => {
+    const isAuthorized = isAppAuthorized || isOwnerOfRepo || allowedList.some((pattern) => {
       if (pattern === '*' || pattern === '*/*') return true;
       if (pattern.endsWith('/*')) {
         const allowedOwner = pattern.slice(0, -2);

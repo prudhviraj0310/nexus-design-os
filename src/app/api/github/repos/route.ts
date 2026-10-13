@@ -1,8 +1,41 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import {
+  getGitHubInstallation,
+  getInstallationAccessToken,
+  getInstallationRepositories,
+} from '@/core/github/app';
 
 export async function GET(request: Request) {
   try {
+    // 1. Check if connected via GitHub App Installation
+    const installation = getGitHubInstallation();
+    let installationIdFromCookie: string | undefined;
+    try {
+      const cookieStore = await cookies();
+      installationIdFromCookie = cookieStore.get('nexus_github_installation_id')?.value;
+    } catch {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const match = cookieHeader.match(/nexus_github_installation_id=([^;]+)/);
+      installationIdFromCookie = match ? match[1] : undefined;
+    }
+    const activeInstallationId = installationIdFromCookie || installation?.installationId;
+
+    if (activeInstallationId) {
+      const tokenResult = await getInstallationAccessToken(activeInstallationId);
+      if (tokenResult) {
+        const repos = await getInstallationRepositories(tokenResult.token);
+        return NextResponse.json({
+          success: true,
+          authMethod: 'github_app',
+          installationId: activeInstallationId,
+          totalCount: repos.length,
+          repos,
+        });
+      }
+    }
+
+    // 2. Token-based fallback
     let tokenFromCookie: string | undefined;
     try {
       const cookieStore = await cookies();
@@ -17,7 +50,7 @@ export async function GET(request: Request) {
 
     if (!token) {
       return NextResponse.json(
-        { success: false, error: 'GitHub account is not connected. Please connect your GitHub account first.' },
+        { success: false, error: 'GitHub account is not connected. Please install the GitHub App or connect your account.' },
         { status: 401 }
       );
     }

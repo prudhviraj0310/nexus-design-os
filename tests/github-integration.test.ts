@@ -25,7 +25,7 @@ describe('GitHub Web Integration API Routes', () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.connected).toBe(false);
-      expect(data.message).toContain('No GitHub token configured');
+      expect(data.message).toContain('No GitHub App installed or token connected');
     });
 
     it('returns connected: true with user metadata when valid token header is present', async () => {

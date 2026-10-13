@@ -1,8 +1,61 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import {
+  getGitHubAppConfig,
+  getGitHubInstallation,
+  getInstallationAccessToken,
+  getInstallationRepositories,
+  clearGitHubInstallation,
+} from '@/core/github/app';
 
 export async function GET(request: Request) {
   try {
+    const appConfig = getGitHubAppConfig();
+    const hasAppConfig = Boolean(appConfig && appConfig.appId);
+
+    // 1. Check if connected via GitHub App Installation (Zero-token native install)
+    const installation = getGitHubInstallation();
+    let installationIdFromCookie: string | undefined;
+    try {
+      const cookieStore = await cookies();
+      installationIdFromCookie = cookieStore.get('nexus_github_installation_id')?.value;
+    } catch {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const match = cookieHeader.match(/nexus_github_installation_id=([^;]+)/);
+      installationIdFromCookie = match ? match[1] : undefined;
+    }
+    const activeInstallationId = installationIdFromCookie || installation?.installationId;
+
+    if (activeInstallationId) {
+      const tokenResult = await getInstallationAccessToken(activeInstallationId);
+      if (tokenResult) {
+        let repoCount = 0;
+        try {
+          const repos = await getInstallationRepositories(tokenResult.token);
+          repoCount = repos.length;
+        } catch {}
+
+        return NextResponse.json({
+          connected: true,
+          authMethod: 'github_app',
+          installationId: activeInstallationId,
+          appSlug: appConfig?.slug || 'nexus-design-os',
+          appInstalled: true,
+          hasAppConfig,
+          user: {
+            login: installation?.accountLogin || 'GitHub Organization / Account',
+            name: installation?.accountLogin || 'GitHub Account',
+            avatarUrl: installation?.accountAvatar || '',
+            htmlUrl: `https://github.com/${installation?.accountLogin || ''}`,
+            publicRepos: repoCount,
+            totalPrivateRepos: 0,
+            accountType: installation?.accountType || 'User',
+          },
+        });
+      }
+    }
+
+    // 2. Check token-based connection (legacy fallback)
     let tokenFromCookie: string | undefined;
     try {
       const cookieStore = await cookies();
@@ -21,7 +74,9 @@ export async function GET(request: Request) {
       return NextResponse.json({
         connected: false,
         oauthAvailable,
-        message: 'No GitHub token configured or connected.',
+        hasAppConfig,
+        appSlug: appConfig?.slug || 'nexus-design-os',
+        message: 'No GitHub App installed or token connected.',
       });
     }
 
@@ -36,6 +91,8 @@ export async function GET(request: Request) {
     if (!res.ok) {
       return NextResponse.json({
         connected: false,
+        hasAppConfig,
+        appSlug: appConfig?.slug || 'nexus-design-os',
         error: `GitHub token rejected: ${res.status} ${res.statusText}`,
       });
     }
@@ -44,6 +101,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       connected: true,
+      authMethod: 'token',
+      hasAppConfig,
+      appSlug: appConfig?.slug || 'nexus-design-os',
       user: {
         login: userData.login,
         name: userData.name || userData.login,
@@ -119,13 +179,16 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
+    clearGitHubInstallation();
+
     const response = NextResponse.json({
       success: true,
       connected: false,
-      message: 'GitHub account disconnected successfully.',
+      message: 'GitHub account and app installation disconnected successfully.',
     });
 
     response.cookies.delete('nexus_github_token');
+    response.cookies.delete('nexus_github_installation_id');
     return response;
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
