@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getDb } from '@/db/index';
 import { tokens, deliveryJobs } from '@/db/schema';
 import { FlatToken } from '@/core/tokens/types';
@@ -35,12 +36,45 @@ export async function POST(request: Request) {
       );
     }
 
+    let tokenFromCookie: string | undefined;
+    try {
+      const cookieStore = await cookies();
+      tokenFromCookie = cookieStore.get('nexus_github_token')?.value;
+    } catch {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const match = cookieHeader.match(/nexus_github_token=([^;]+)/);
+      tokenFromCookie = match ? match[1] : undefined;
+    }
+    const githubToken = body.githubToken || tokenFromCookie || process.env.GITHUB_TOKEN;
+
+    // Check if token belongs to repository owner or user has access
+    let isOwnerOfRepo = false;
+    if (githubToken) {
+      try {
+        const userRes = await fetch('https://api.github.com/user', {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: 'application/vnd.github.v3+json',
+            'User-Agent': 'Nexus-Design-OS/1.0.0',
+          },
+        });
+        if (userRes.ok) {
+          const userObj = await userRes.json();
+          if (userObj.login && userObj.login.toLowerCase() === repoOwner.toLowerCase()) {
+            isOwnerOfRepo = true;
+          }
+        }
+      } catch {
+        // ignore network error during ownership check
+      }
+    }
+
     // Server-side repository allowlist authorization check
     const targetRepo = `${repoOwner}/${repoName}`.toLowerCase();
     const rawAllowlist = env().GITHUB_ALLOWED_REPOSITORIES || process.env.GITHUB_ALLOWED_REPOSITORIES || 'acme-corp/web-platform-core,acme-corp/design-tokens-repo,acme-corp/design-system';
     const allowedList = rawAllowlist.split(',').map((s) => s.trim().toLowerCase());
 
-    const isAuthorized = allowedList.some((pattern) => {
+    const isAuthorized = isOwnerOfRepo || allowedList.some((pattern) => {
       if (pattern === '*' || pattern === '*/*') return true;
       if (pattern.endsWith('/*')) {
         const allowedOwner = pattern.slice(0, -2);
@@ -63,7 +97,6 @@ export async function POST(request: Request) {
     const newBranchName = body.newBranchName || body.branch || `nexus/sync-${Date.now()}`;
     const prTitle = body.prTitle || body.title || 'Design Token Release & Sync';
     const prBody = body.prBody || 'Automated pull request generated from Nexus Design OS central source of truth.';
-    const githubToken = body.githubToken || process.env.GITHUB_TOKEN;
     
     // Default dryRun to true: safe by default unless explicitly set to false
     const dryRun = body.dryRun !== undefined ? Boolean(body.dryRun) : true;

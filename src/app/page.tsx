@@ -52,6 +52,10 @@ import {
   FolderDown,
   Radio,
   Activity,
+  GitBranch,
+  GitFork,
+  Lock,
+  LogOut,
 } from 'lucide-react';
 
 // Brand & Integration SVG Helpers using cloned official assets
@@ -158,6 +162,16 @@ export default function SupernovaPlatform() {
   const [prTitle, setPrTitle] = useState<string>('chore: update design tokens from Supernova Studio');
   const [delivering, setDelivering] = useState<boolean>(false);
   const [deliveryResult, setDeliveryResult] = useState<any>(null);
+  const [isLiveDelivery, setIsLiveDelivery] = useState<boolean>(true);
+
+  // GitHub Account Connection & Repos Auto-Discovery
+  const [githubConnected, setGithubConnected] = useState<boolean>(false);
+  const [githubUser, setGithubUser] = useState<any>(null);
+  const [githubRepos, setGithubRepos] = useState<any[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState<boolean>(false);
+  const [showConnectModal, setShowConnectModal] = useState<boolean>(false);
+  const [customGithubToken, setCustomGithubToken] = useState<string>('');
+  const [connectingGithub, setConnectingGithub] = useState<boolean>(false);
 
   // Audit state
   const [auditCode, setAuditCode] = useState<string>(`// Testing component compliance against Supernova design tokens
@@ -288,11 +302,104 @@ export function PrimaryCard() {
     }
   };
 
+  // GitHub Connection & Auto-Discovery Handlers
+  const loadGithubRepos = async () => {
+    try {
+      setLoadingRepos(true);
+      const res = await fetch('/api/github/repos');
+      const data = await res.json();
+      if (data.success && data.repos) {
+        setGithubRepos(data.repos);
+        if (data.repos.length > 0) {
+          const exists = data.repos.some((r: any) => r.fullName === targetRepo);
+          if (!exists) {
+            setTargetRepo(data.repos[0].fullName);
+            setTargetBranch(`nexus/tokens-${Date.now().toString().slice(-4)}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load GitHub repos', err);
+    } finally {
+      setLoadingRepos(false);
+    }
+  };
+
+  const checkGithubStatus = async () => {
+    try {
+      const res = await fetch('/api/github/connect');
+      const data = await res.json();
+      if (data.connected && data.user) {
+        setGithubConnected(true);
+        setGithubUser(data.user);
+        await loadGithubRepos();
+      } else {
+        setGithubConnected(false);
+        setGithubUser(null);
+      }
+    } catch (err) {
+      console.error('Failed to check GitHub status', err);
+      setGithubConnected(false);
+    }
+  };
+
+  const handleConnectGithubToken = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!customGithubToken.trim()) return;
+    try {
+      setConnectingGithub(true);
+      const res = await fetch('/api/github/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: customGithubToken.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGithubConnected(true);
+        setGithubUser(data.user);
+        setCustomGithubToken('');
+        setShowConnectModal(false);
+        await loadGithubRepos();
+      } else {
+        alert(`Connection failed: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Connection failed: ${err.message}`);
+    } finally {
+      setConnectingGithub(false);
+    }
+  };
+
+  const handleDisconnectGithub = async () => {
+    if (!confirm('Disconnect your GitHub account from Nexus Design OS?')) return;
+    try {
+      await fetch('/api/github/connect', { method: 'DELETE' });
+      setGithubConnected(false);
+      setGithubUser(null);
+      setGithubRepos([]);
+    } catch (err) {
+      console.error('Failed to disconnect GitHub', err);
+    }
+  };
+
   useEffect(() => {
     loadTokens();
     loadComponents();
     loadReleases();
     loadExport('tailwind');
+    checkGithubStatus();
+
+    // Check URL search params for GitHub OAuth callback result
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('github') === 'connected') {
+        checkGithubStatus();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (urlParams.get('github_error')) {
+        alert(`GitHub OAuth error: ${urlParams.get('github_error')}`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
   }, []);
 
   // 2. Add Token Action
@@ -386,6 +493,7 @@ export function PrimaryCard() {
           newBranchName: targetBranch,
           title: prTitle,
           prTitle: prTitle,
+          dryRun: !isLiveDelivery,
         }),
       });
       const data = await res.json();
@@ -1521,6 +1629,106 @@ Endpoint: \`${mcpEndpointUrl}\`
                 </button>
               </div>
 
+              {/* GitHub Account Connection Card */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0f172a] flex items-center justify-center text-white shrink-0 shadow-xs">
+                      <IntegrationLogo name="github" size={22} className="brightness-200 invert" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#0f172a]">GitHub Delivery Integration</span>
+                        {githubConnected ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></span>
+                            Connected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#f8fafc] text-[#64748b] border border-[#cbd5e1]">
+                            Not Connected
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#64748b] mt-0.5">
+                        {githubConnected && githubUser
+                          ? `Authenticated as @${githubUser.login} (${githubRepos.length} accessible repositories loaded)`
+                          : 'Connect your GitHub account to auto-discover repositories and deliver automated PRs.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {githubConnected && githubUser ? (
+                      <>
+                        <button
+                          onClick={loadGithubRepos}
+                          disabled={loadingRepos}
+                          className="btn-secondary text-xs px-3 py-1.5"
+                          title="Refresh repository list"
+                        >
+                          <RefreshCw size={13} className={loadingRepos ? 'animate-spin' : ''} />
+                          <span>{loadingRepos ? 'Refreshing...' : 'Refresh Repos'}</span>
+                        </button>
+                        <button
+                          onClick={handleDisconnectGithub}
+                          className="btn-secondary text-xs px-3 py-1.5 text-[#ef4444] hover:bg-[#fef2f2] hover:border-[#fecaca]"
+                        >
+                          <LogOut size={13} />
+                          <span>Disconnect</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setShowConnectModal(true)}
+                        className="btn-primary text-xs px-3.5 py-1.5 bg-[#0f172a] hover:bg-[#1e293b]"
+                      >
+                        <IntegrationLogo name="github" size={14} className="brightness-200 invert mr-1" />
+                        <span>Connect GitHub Account</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {githubConnected && githubUser && (
+                  <div className="mt-4 pt-3 border-t border-[#f1f5f9] flex flex-wrap items-center justify-between text-xs text-[#64748b] gap-2">
+                    <div className="flex items-center gap-2">
+                      {githubUser.avatarUrl && (
+                        <img
+                          src={githubUser.avatarUrl}
+                          alt={githubUser.login}
+                          className="w-5 h-5 rounded-full border border-[#cbd5e1]"
+                        />
+                      )}
+                      <span className="font-medium text-[#0f172a]">
+                        {githubUser.name || githubUser.login}
+                      </span>
+                      <a
+                        href={githubUser.htmlUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#2563eb] hover:underline flex items-center gap-0.5"
+                      >
+                        @{githubUser.login} <ExternalLink size={11} />
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-4 text-[11px]">
+                      <span>
+                        <strong className="text-[#0f172a]">{githubUser.publicRepos}</strong> public repos
+                      </span>
+                      {githubUser.totalPrivateRepos > 0 && (
+                        <span>
+                          <strong className="text-[#0f172a]">{githubUser.totalPrivateRepos}</strong> private repos
+                        </span>
+                      )}
+                      <span className="text-[#10b981] font-medium flex items-center gap-1">
+                        <CheckCircle2 size={12} /> Auto-Sync Enabled
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Taxonomy Chips Filter */}
               <div className="flex items-center gap-2">
                 <button
@@ -1742,7 +1950,7 @@ Endpoint: \`${mcpEndpointUrl}\`
 
               {/* Code Preview & Delivery Sandbox */}
               {exportedContent && (
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Terminal size={16} className="text-[#2563eb]" />
@@ -1782,27 +1990,219 @@ Endpoint: \`${mcpEndpointUrl}\`
                         <Download size={13} />
                         <span>Download</span>
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Delivery Configuration Controls */}
+                  <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FolderGit2 size={16} className="text-[#2563eb]" />
+                        <span className="text-xs font-bold text-[#0f172a]">Automated Delivery Target</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-[#64748b]">Mode:</span>
+                        <div className="inline-flex rounded-lg border border-[#cbd5e1] p-0.5 bg-white text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setIsLiveDelivery(true)}
+                            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                              isLiveDelivery
+                                ? 'bg-[#2563eb] text-white shadow-xs'
+                                : 'text-[#64748b] hover:text-[#0f172a]'
+                            }`}
+                          >
+                            Live GitHub PR
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsLiveDelivery(false)}
+                            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                              !isLiveDelivery
+                                ? 'bg-[#2563eb] text-white shadow-xs'
+                                : 'text-[#64748b] hover:text-[#0f172a]'
+                            }`}
+                          >
+                            Dry-Run Simulation
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      {/* Repository Selector */}
+                      <div>
+                        <label className="font-semibold text-[#475569] block mb-1">
+                          Target Repository {githubRepos.length > 0 && `(${githubRepos.length} available)`}
+                        </label>
+                        {githubRepos.length > 0 ? (
+                          <select
+                            value={targetRepo}
+                            onChange={(e) => {
+                              setTargetRepo(e.target.value);
+                              const selected = githubRepos.find((r) => r.fullName === e.target.value);
+                              if (selected?.defaultBranch) {
+                                setTargetBranch(`nexus/tokens-${Date.now().toString().slice(-4)}`);
+                              }
+                            }}
+                            className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-lg font-mono text-xs focus:outline-none focus:border-[#2563eb]"
+                          >
+                            {githubRepos.map((repo) => (
+                              <option key={repo.id} value={repo.fullName}>
+                                {repo.fullName} {repo.isPrivate ? '🔒 (Private)' : '🌐 (Public)'}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={targetRepo}
+                              onChange={(e) => setTargetRepo(e.target.value)}
+                              placeholder="owner/repository-name"
+                              className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-lg font-mono text-xs focus:outline-none focus:border-[#2563eb]"
+                            />
+                            {!githubConnected && (
+                              <button
+                                onClick={() => setShowConnectModal(true)}
+                                type="button"
+                                className="text-[10px] text-[#2563eb] hover:underline mt-1 block font-medium"
+                              >
+                                + Connect GitHub to select from your repos
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Branch Name */}
+                      <div>
+                        <label className="font-semibold text-[#475569] block mb-1">New Branch Name</label>
+                        <input
+                          type="text"
+                          value={targetBranch}
+                          onChange={(e) => setTargetBranch(e.target.value)}
+                          placeholder="e.g. nexus/tokens-update"
+                          className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-lg font-mono text-xs focus:outline-none focus:border-[#2563eb]"
+                        />
+                      </div>
+
+                      {/* PR Title */}
+                      <div>
+                        <label className="font-semibold text-[#475569] block mb-1">Pull Request Title</label>
+                        <input
+                          type="text"
+                          value={prTitle}
+                          onChange={(e) => setPrTitle(e.target.value)}
+                          placeholder="chore: sync design tokens"
+                          className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-[#2563eb]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-[#e2e8f0]">
+                      <div className="text-xs text-[#64748b] flex items-center gap-1.5">
+                        <Info size={13} className="text-[#2563eb]" />
+                        <span>
+                          {isLiveDelivery
+                            ? 'Will create branch, commit generated tokens, and open a real Pull Request.'
+                            : 'Will validate AST syntax and simulate git diff without touching GitHub.'}
+                        </span>
+                      </div>
                       <button
                         onClick={handleDeliverPr}
                         disabled={delivering}
-                        className="btn-primary text-xs"
+                        className="btn-primary text-xs px-4 py-2 flex items-center gap-2"
                       >
-                        <GitPullRequest size={13} />
-                        <span>{delivering ? 'Creating PR...' : 'Create GitHub PR'}</span>
+                        <GitPullRequest size={14} className={delivering ? 'animate-spin' : ''} />
+                        <span>
+                          {delivering
+                            ? 'Processing Delivery...'
+                            : isLiveDelivery
+                            ? `Deliver to ${targetRepo || 'GitHub'}`
+                            : 'Run Dry-Run Delivery'}
+                        </span>
                       </button>
                     </div>
                   </div>
 
+                  {/* Code Editor View */}
                   <div className="p-4 bg-[#0f172a] text-[#f8fafc] rounded-lg text-xs font-mono overflow-x-auto max-h-96">
                     <pre>{exportedContent.content}</pre>
                   </div>
 
+                  {/* Delivery Status & Created Pull Request Link */}
                   {deliveryResult && (
-                    <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg text-xs">
-                      <div className="font-semibold text-[#0f172a] mb-1">GitHub PR Delivery Status:</div>
-                      <pre className="text-[11px] font-mono text-[#475569]">
-                        {JSON.stringify(deliveryResult, null, 2)}
-                      </pre>
+                    <div
+                      className={`p-4 rounded-xl border text-xs space-y-3 ${
+                        deliveryResult.success
+                          ? 'bg-[#f0fdf4] border-[#bbf7d0]'
+                          : 'bg-[#fef2f2] border-[#fecaca]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {deliveryResult.success ? (
+                            <CheckCircle2 size={18} className="text-[#16a34a]" />
+                          ) : (
+                            <AlertTriangle size={18} className="text-[#dc2626]" />
+                          )}
+                          <span
+                            className={`font-bold text-sm ${
+                              deliveryResult.success ? 'text-[#166534]' : 'text-[#991b1b]'
+                            }`}
+                          >
+                            {deliveryResult.success
+                              ? deliveryResult.dryRun
+                                ? 'Dry-Run Simulation Successful!'
+                                : '🎉 Pull Request Created Successfully!'
+                              : 'Delivery Failed'}
+                          </span>
+                        </div>
+
+                        {deliveryResult.result?.pullRequestUrl && (
+                          <a
+                            href={deliveryResult.result.pullRequestUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn-primary text-xs px-3.5 py-1.5 bg-[#16a34a] hover:bg-[#15803d] flex items-center gap-1.5 shadow-sm"
+                          >
+                            <span>View Pull Request on GitHub</span>
+                            <ExternalLink size={13} />
+                          </a>
+                        )}
+                      </div>
+
+                      {deliveryResult.result?.pullRequestUrl && (
+                        <div className="p-3 bg-white rounded-lg border border-[#bbf7d0] flex items-center justify-between text-xs">
+                          <span className="font-mono text-[#166534] truncate max-w-xl">
+                            {deliveryResult.result.pullRequestUrl}
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(deliveryResult.result.pullRequestUrl, 'pr_url')}
+                            className="text-[#166534] hover:text-[#14532d] font-semibold flex items-center gap-1"
+                          >
+                            {copiedKey === 'pr_url' ? <Check size={12} /> : <Copy size={12} />}
+                            <span>{copiedKey === 'pr_url' ? 'Copied' : 'Copy Link'}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {deliveryResult.error && (
+                        <div className="p-2.5 bg-white rounded-lg border border-[#fecaca] text-[#991b1b] font-mono text-[11px]">
+                          {deliveryResult.error}
+                        </div>
+                      )}
+
+                      {deliveryResult.result?.diffSummary && (
+                        <div className="text-[11px] font-mono text-[#334155] bg-white/60 p-2.5 rounded-lg border border-[#e2e8f0]">
+                          <div className="font-semibold text-[#0f172a] mb-1">Diff Summary:</div>
+                          <div>Files changed: {deliveryResult.result.filesCommitted?.join(', ') || 'tokens.css, tokens.ts'}</div>
+                          {deliveryResult.result.branchCreated && (
+                            <div>Branch created: {deliveryResult.result.branchCreated}</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2358,6 +2758,106 @@ Endpoint: \`${mcpEndpointUrl}\`
                 </button>
                 <button type="submit" disabled={publishingRelease} className="btn-primary text-xs">
                   {publishingRelease ? 'Publishing...' : 'Publish Release'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONNECT GITHUB MODAL */}
+      {showConnectModal && (
+        <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#0f172a] flex items-center justify-center text-white">
+                  <IntegrationLogo name="github" size={20} className="brightness-200 invert" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0f172a]">Connect GitHub Account</h3>
+                  <p className="text-xs text-[#64748b]">Authorize Nexus Design OS to deliver pull requests</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowConnectModal(false)}
+                className="text-[#94a3b8] hover:text-[#0f172a] text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Option 1: 1-Click OAuth */}
+            <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
+                  Option 1: Sign in with GitHub
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#eff6ff] text-[#2563eb]">
+                  Recommended
+                </span>
+              </div>
+              <p className="text-xs text-[#64748b]">
+                Authenticate directly with GitHub OAuth. Automatically connects repo access for seamless 1-click token delivery.
+              </p>
+              <a
+                href="/api/github/oauth"
+                className="w-full btn-primary py-2 text-xs flex items-center justify-center gap-2 bg-[#0f172a] hover:bg-[#1e293b]"
+              >
+                <IntegrationLogo name="github" size={16} className="brightness-200 invert" />
+                <span>Continue with GitHub OAuth</span>
+                <ArrowRight size={13} />
+              </a>
+            </div>
+
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-[#e2e8f0] w-full"></div>
+              <span className="bg-white px-3 text-[11px] uppercase tracking-wider text-[#94a3b8] absolute font-semibold">
+                Or Fast Connect with Token
+              </span>
+            </div>
+
+            {/* Option 2: Personal Access Token Fast Connect */}
+            <form onSubmit={handleConnectGithubToken} className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-[#475569] block mb-1">
+                  GitHub Personal Access Token (PAT)
+                </label>
+                <input
+                  type="password"
+                  value={customGithubToken}
+                  onChange={(e) => setCustomGithubToken(e.target.value)}
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_..."
+                  className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg font-mono text-xs focus:outline-none focus:border-[#2563eb]"
+                  required
+                />
+                <div className="flex items-center justify-between mt-1 text-[11px] text-[#64748b]">
+                  <span>Requires `repo` scope to create PRs.</span>
+                  <a
+                    href="https://github.com/settings/tokens/new?scopes=repo&description=Nexus+Design+OS"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#2563eb] hover:underline flex items-center gap-0.5 font-medium"
+                  >
+                    Generate Token ↗
+                  </a>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConnectModal(false)}
+                  className="btn-secondary text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={connectingGithub || !customGithubToken.trim()}
+                  className="btn-primary text-xs px-4 py-2"
+                >
+                  {connectingGithub ? 'Connecting...' : 'Connect Token'}
                 </button>
               </div>
             </form>
