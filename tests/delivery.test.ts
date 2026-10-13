@@ -143,4 +143,107 @@ describe('Continuous Delivery: GitHub Engine', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
   });
+
+  it('detects no-op and skips redundant delivery when base branch already matches', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/git/ref/heads/main')) {
+        return { ok: true, json: async () => ({ object: { sha: 'base-sha-123' } }) };
+      }
+      if (url.includes('/contents/tokens.css?ref=main')) {
+        return {
+          ok: true,
+          json: async () => ({
+            content: Buffer.from(mockFiles[0].content).toString('base64'),
+          }),
+        };
+      }
+      if (url.includes('/contents/tokens.ts?ref=main')) {
+        return {
+          ok: true,
+          json: async () => ({
+            content: Buffer.from(mockFiles[1].content).toString('base64'),
+          }),
+        };
+      }
+      return { ok: false, status: 404 };
+    }) as any;
+
+    try {
+      const result = await engine.deliver({
+        projectId: 'proj-core-web',
+        repoOwner: 'acme-corp',
+        repoName: 'design-tokens-repo',
+        newBranchName: 'nexus/tokens-sync',
+        commitMessage: 'feat: sync tokens',
+        prTitle: 'Sync Tokens',
+        prBody: 'PR Body',
+        files: mockFiles,
+        githubToken: 'ghp_test_token',
+        dryRun: false,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.noOp).toBe(true);
+      expect(result.filesCommitted).toHaveLength(0);
+      expect(result.pullRequestUrl).toBeNull();
+      expect(result.diffSummary).toContain('already up-to-date');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('idempotently reuses existing open pull request instead of creating duplicate', async () => {
+    const originalFetch = global.fetch;
+    let postPullsCalled = false;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, init?: any) => {
+      if (url.includes('/git/ref/heads/main')) {
+        return { ok: true, json: async () => ({ object: { sha: 'base-sha-123' } }) };
+      }
+      if (url.includes('/git/refs')) {
+        return { ok: true, json: async () => ({ ref: 'refs/heads/nexus/tokens-sync' }) };
+      }
+      if (url.includes('/contents/') && (!init || init.method === 'GET')) {
+        return { ok: false, status: 404 };
+      }
+      if (init?.method === 'PUT') {
+        return { ok: true, json: async () => ({ commit: { sha: 'commit-sha-new' } }) };
+      }
+      if (url.includes('/pulls?') && (!init?.method || init.method === 'GET')) {
+        return {
+          ok: true,
+          json: async () => [{ html_url: 'https://github.com/acme-corp/design-tokens-repo/pull/77' }],
+        };
+      }
+      if (url.endsWith('/pulls') && init?.method === 'POST') {
+        postPullsCalled = true;
+        return { ok: true, json: async () => ({ html_url: 'https://github.com/acme-corp/design-tokens-repo/pull/999' }) };
+      }
+      return { ok: true, json: async () => ({}) };
+    }) as any;
+
+    try {
+      const result = await engine.deliver({
+        projectId: 'proj-core-web',
+        repoOwner: 'acme-corp',
+        repoName: 'design-tokens-repo',
+        newBranchName: 'nexus/tokens-sync',
+        commitMessage: 'feat: sync tokens',
+        prTitle: 'Sync Tokens',
+        prBody: 'PR Body',
+        files: mockFiles,
+        githubToken: 'ghp_test_token',
+        dryRun: false,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.prUpdated).toBe(true);
+      expect(result.existingPrFound).toBe(true);
+      expect(result.pullRequestUrl).toBe('https://github.com/acme-corp/design-tokens-repo/pull/77');
+      expect(postPullsCalled).toBe(false); // Verified: no duplicate PR was created!
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

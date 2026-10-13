@@ -5,6 +5,10 @@ import { tokens, deliveryJobs } from '@/db/schema';
 import { FlatToken } from '@/core/tokens/types';
 import { exportToCss } from '@/core/exporters/css';
 import { exportToTypeScript } from '@/core/exporters/typescript';
+import { exportToTailwind } from '@/core/exporters/tailwind';
+import { exportToSwift } from '@/core/exporters/swift';
+import { exportToKotlin } from '@/core/exporters/kotlin';
+import { exportToJson } from '@/core/exporters/json';
 import { GitHubDeliveryEngine } from '@/core/delivery/github';
 import { validateApiAuth } from '@/server/auth';
 import { env } from '@/server/env';
@@ -136,10 +140,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const newBranchName = body.newBranchName || body.branch || `nexus/sync-${Date.now()}`;
+    const baseBranch = body.baseBranch || 'main';
+    const rawBranch = body.newBranchName || body.branch;
+    const newBranchName =
+      !rawBranch || rawBranch === baseBranch || rawBranch === 'main'
+        ? (body.uniqueBranch ? `nexus/sync-${Date.now()}` : 'nexus/tokens-sync')
+        : rawBranch;
+
     const prTitle = body.prTitle || body.title || 'Design Token Release & Sync';
-    const prBody = body.prBody || 'Automated pull request generated from Nexus Design OS central source of truth.';
-    
+    const prBody =
+      body.prBody ||
+      'Automated multi-platform design token bundle generated from Nexus Design OS (CSS, TypeScript, Tailwind v4, Swift, Kotlin, and DTCG JSON).';
+
     // Default dryRun to true: safe by default unless explicitly set to false
     const dryRun = body.dryRun !== undefined ? Boolean(body.dryRun) : true;
 
@@ -169,25 +181,38 @@ export async function POST(request: Request) {
       isDeprecated: t.isDeprecated,
     }));
 
+    // Generate comprehensive multi-platform bundle
     const css = exportToCss(flatTokens, { prefix: 'nexus' });
     const ts = exportToTypeScript(flatTokens);
+    const tailwind = exportToTailwind(flatTokens, { prefix: 'nexus' });
+    const swift = exportToSwift(flatTokens);
+    const kotlin = exportToKotlin(flatTokens);
+    const json = exportToJson(flatTokens);
 
     const deliveryEngine = new GitHubDeliveryEngine();
     const result = await deliveryEngine.deliver({
       projectId: 'proj-core-web',
       repoOwner,
       repoName,
+      baseBranch,
       newBranchName,
       commitMessage: 'feat(tokens): automated release from Nexus Design OS',
       prTitle,
       prBody,
-      files: [css, ts],
+      files: [css, ts, tailwind, swift, kotlin, json],
       githubToken,
       dryRun,
     });
 
     // Record job in database (distinguishing simulated dry-runs from actual live deliveries)
-    const jobStatus = result.success ? (dryRun ? 'simulated' : 'success') : 'failed';
+    const jobStatus = result.success
+      ? dryRun
+        ? 'simulated'
+        : result.noOp
+        ? 'no_changes'
+        : 'success'
+      : 'failed';
+
     await db.insert(deliveryJobs).values({
       id: `job-${Date.now()}`,
       projectId: 'proj-core-web',
@@ -202,6 +227,7 @@ export async function POST(request: Request) {
       success: result.success,
       dryRun,
       simulated: dryRun,
+      noOp: result.noOp || false,
       result,
     });
   } catch (err: any) {

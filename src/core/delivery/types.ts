@@ -17,6 +17,10 @@ export interface DeliveryRequest {
 export interface DeliveryResult {
   success: boolean;
   dryRun?: boolean;
+  noOp?: boolean;
+  prUpdated?: boolean;
+  prCreated?: boolean;
+  existingPrFound?: boolean;
   pullRequestUrl?: string | null;
   branchCreated?: string | null;
   commitSha?: string | null;
