@@ -73,12 +73,20 @@ export class AuditEngine {
             driver: {
               name: 'NovaDesign Quality Intelligence',
               version: '1.0.0',
-              rules: this.rules.map((r) => ({
-                id: r.id,
-                name: r.name,
-                shortDescription: { text: r.description },
-                defaultConfiguration: { level: r.defaultSeverity === 'error' ? 'error' : 'warning' },
-              })),
+              rules: [
+                ...this.rules.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  shortDescription: { text: r.description },
+                  defaultConfiguration: { level: r.defaultSeverity === 'error' ? 'error' : 'warning' },
+                })),
+                {
+                  id: 'RULE-005-DYNAMIC-EXPRESSION',
+                  name: 'Dynamic Styling Expression',
+                  shortDescription: { text: 'Flags dynamic expressions in style properties that cannot be statically evaluated at build time.' },
+                  defaultConfiguration: { level: 'note' },
+                },
+              ],
             },
           },
           results: findings.map((f) => ({

@@ -20,17 +20,54 @@ export function exportToKotlin(tokens: FlatToken[], options: ExporterOptions = {
   lines.push(`import androidx.compose.ui.unit.dp`);
   lines.push(`import androidx.compose.ui.unit.Dp`);
   lines.push('');
+
+  // Track categories and report omitted tokens
+  const supportedCategories = new Set(['color', 'spacing', 'borderRadius', 'radii']);
+  const omittedTokens = tokens.filter((t) => !supportedCategories.has(t.category));
+  const omittedCategories = [...new Set(omittedTokens.map((t) => t.category))];
+
+  if (omittedTokens.length > 0) {
+    lines.push(`// WARNING: ${omittedTokens.length} token(s) across ${omittedCategories.length} category/categories omitted from Kotlin Compose export:`);
+    for (const cat of omittedCategories) {
+      const count = omittedTokens.filter((t) => t.category === cat).length;
+      const sample = omittedTokens.find((t) => t.category === cat)?.path;
+      lines.push(`// - ${cat} (${count} tokens, e.g. "${sample}")`);
+    }
+    lines.push(`// Native Compose objects for these categories are not yet generated.`);
+    lines.push('');
+  }
+
   lines.push(`object NovaColors {`);
 
   const colorTokens = tokens.filter((t) => t.category === 'color');
   for (const token of colorTokens) {
     const propName = toPascalCase(token.path.replace(/^color\./, ''));
     let hex = token.resolvedValue;
-    if (hex.startsWith('#')) {
-      const cleanHex = hex.replace('#', '');
-      const hex8 = cleanHex.length === 6 ? `FF${cleanHex}` : cleanHex;
+    if (hex && hex.startsWith('#')) {
+      let cleanHex = hex.replace('#', '').toUpperCase();
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+      } else if (cleanHex.length === 4) {
+        cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2] + cleanHex[3] + cleanHex[3];
+      }
+
+      let argbHex: string;
+      if (cleanHex.length === 6) {
+        // RRGGBB -> AARRGGBB with AA = FF
+        argbHex = `FF${cleanHex}`;
+      } else if (cleanHex.length === 8) {
+        // CSS RRGGBBAA -> Compose AARRGGBB
+        const rr = cleanHex.substring(0, 2);
+        const gg = cleanHex.substring(2, 4);
+        const bb = cleanHex.substring(4, 6);
+        const aa = cleanHex.substring(6, 8);
+        argbHex = `${aa}${rr}${gg}${bb}`;
+      } else {
+        argbHex = `FF${cleanHex}`;
+      }
+
       lines.push(`    /** ${token.description || token.path} */`);
-      lines.push(`    val ${propName} = Color(0x${hex8.toUpperCase()}L)`);
+      lines.push(`    val ${propName} = Color(0x${argbHex}L)`);
     }
   }
 
@@ -47,6 +84,20 @@ export function exportToKotlin(tokens: FlatToken[], options: ExporterOptions = {
   }
 
   lines.push(`}`);
+  lines.push('');
+
+  const radiusTokens = tokens.filter((t) => t.category === 'borderRadius');
+  if (radiusTokens.length > 0) {
+    lines.push(`object NovaRadii {`);
+    for (const token of radiusTokens) {
+      const propName = toPascalCase(token.path.replace(/^borderRadius\./, ''));
+      const numeric = parseFloat(token.resolvedValue) || 0;
+      lines.push(`    /** ${token.description || token.path} */`);
+      lines.push(`    val ${propName}: Dp = ${numeric}.dp`);
+    }
+    lines.push(`}`);
+    lines.push('');
+  }
 
   return {
     filename: 'Tokens.kt',

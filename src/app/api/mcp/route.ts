@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/db/index';
 import { createNovaMcpServer, NOVA_TOOLS } from '@/mcp/server';
 import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { validateApiAuth } from '@/server/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = validateApiAuth(request);
+  if (!auth.authorized) return auth.errorResponse!;
+
   return NextResponse.json({
     tools: NOVA_TOOLS,
   });
@@ -11,6 +15,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const body = await request.json();
     
     // Support JSON-RPC 2.0 tools/list

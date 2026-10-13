@@ -23,17 +23,31 @@ export class GitHubDeliveryEngine {
     }
     const diffSummary = diffLines.join('\n');
 
-    // Handle Dry Run or missing GitHub credentials via Fixture Simulation
-    if (dryRun || !githubToken) {
+    // 1. Handle Dry Run explicitly: never fabricate fake remote URLs or commit SHAs
+    if (dryRun) {
       return {
         success: true,
-        pullRequestUrl: `https://github.com/${repoOwner}/${repoName}/pull/fixture-${Date.now().toString().slice(-4)}`,
-        branchCreated: newBranchName,
-        commitSha: `fixture-sha-${Math.random().toString(36).substring(2, 10)}`,
+        dryRun: true,
+        pullRequestUrl: null,
+        branchCreated: null,
+        commitSha: null,
         filesCommitted: files.map((f) => f.filename),
         diffSummary,
       };
     }
+
+    // 2. Reject missing credentials for live operations
+    if (!githubToken) {
+      return {
+        success: false,
+        dryRun: false,
+        filesCommitted: [],
+        diffSummary,
+        error: 'Missing GITHUB_TOKEN: Live delivery requires valid GitHub credentials.',
+      };
+    }
+
+    const committedFiles: string[] = [];
 
     try {
       const headers = {
@@ -74,7 +88,7 @@ export class GitHubDeliveryEngine {
         throw new Error(`Failed to create branch "${newBranchName}": ${createBranchRes.status}`);
       }
 
-      // 3. Commit files
+      // 3. Commit files sequentially with partial-failure tracking
       let latestCommitSha = baseSha;
       for (const file of files) {
         // Check if file exists to get its SHA for update
@@ -103,8 +117,17 @@ export class GitHubDeliveryEngine {
         );
 
         if (!putRes.ok) {
-          throw new Error(`Failed to commit file "${file.filename}": ${putRes.status}`);
+          return {
+            success: false,
+            dryRun: false,
+            partialFailure: committedFiles.length > 0,
+            filesCommitted: committedFiles,
+            diffSummary,
+            error: `Failed to commit file "${file.filename}" (${putRes.status} ${putRes.statusText}). Remote branch "${newBranchName}" has ${committedFiles.length} of ${files.length} files committed.`,
+          };
         }
+
+        committedFiles.push(file.filename);
         const putData = (await putRes.json()) as { commit: { sha: string } };
         latestCommitSha = putData.commit.sha;
       }
@@ -122,23 +145,33 @@ export class GitHubDeliveryEngine {
       });
 
       if (!prRes.ok) {
-        throw new Error(`Failed to create pull request: ${prRes.status} ${prRes.statusText}`);
+        return {
+          success: false,
+          dryRun: false,
+          partialFailure: true,
+          filesCommitted: committedFiles,
+          diffSummary,
+          error: `Files committed to branch "${newBranchName}" successfully, but PR creation failed (${prRes.status} ${prRes.statusText}).`,
+        };
       }
 
       const prData = (await prRes.json()) as { html_url: string };
 
       return {
         success: true,
+        dryRun: false,
         pullRequestUrl: prData.html_url,
         branchCreated: newBranchName,
         commitSha: latestCommitSha,
-        filesCommitted: files.map((f) => f.filename),
+        filesCommitted: committedFiles,
         diffSummary,
       };
     } catch (err: any) {
       return {
         success: false,
-        filesCommitted: [],
+        dryRun: false,
+        partialFailure: committedFiles.length > 0,
+        filesCommitted: committedFiles,
         diffSummary,
         error: err.message || String(err),
       };

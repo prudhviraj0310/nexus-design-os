@@ -64,12 +64,15 @@ export async function POST(request: Request) {
       createdAt: new Date(),
     };
 
-    await db.insert(releases).values(newRelease);
+    await db.transaction(async (tx: any) => {
+      await tx.insert(releases).values(newRelease);
 
-    // Update active design system version
-    await db.update(designSystems)
-      .set({ version })
-      .where(eq(designSystems.id, designSystemId));
+      // Update active design system version atomically
+      await tx
+        .update(designSystems)
+        .set({ version })
+        .where(eq(designSystems.id, designSystemId));
+    });
 
     return NextResponse.json({
       success: true,

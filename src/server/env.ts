@@ -27,6 +27,8 @@ const EnvSchema = z.object({
   GITHUB_TOKEN: z.string().optional(),
   /** Server-side Figma personal access token used for live variable import. */
   FIGMA_TOKEN: z.string().optional(),
+  /** Server-side allowlist of authorized repository targets (comma-separated owner/repo or owner/*). */
+  GITHUB_ALLOWED_REPOSITORIES: z.string().default('acme-corp/web-platform-core,acme-corp/design-tokens-repo,acme-corp/design-system'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

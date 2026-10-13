@@ -19,7 +19,8 @@ export function validateApiAuth(request: Request): AuthCheckResult {
     return { authorized: true, userId: 'local-operator' };
   }
 
-  const configuredKey = env().NOVA_API_KEY || process.env.NEXUS_API_KEY;
+  const configuredKey = env().NOVA_API_KEY || process.env.NEXUS_API_KEY || process.env.NOVA_API_KEY;
+  const adminPassword = env().NOVA_ADMIN_PASSWORD || process.env.NOVA_ADMIN_PASSWORD;
 
   // 1. Check Bearer token or x-api-key
   const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
@@ -36,9 +37,13 @@ export function validateApiAuth(request: Request): AuthCheckResult {
     return { authorized: true, userId: 'api-client' };
   }
 
+  if (adminPassword && token === adminPassword) {
+    return { authorized: true, userId: 'admin' };
+  }
+
   // 2. Allow same-origin requests in development if no key configured
   const origin = request.headers.get('origin') || request.headers.get('host');
-  if (env().NODE_ENV !== 'production' && !configuredKey) {
+  if (env().NODE_ENV !== 'production' && !configuredKey && !adminPassword) {
     return { authorized: true, userId: 'dev-user' };
   }
 

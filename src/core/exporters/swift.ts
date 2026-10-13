@@ -16,6 +16,23 @@ export function exportToSwift(tokens: FlatToken[], options: ExporterOptions = {}
   lines.push('');
   lines.push(`import SwiftUI`);
   lines.push('');
+
+  // Track categories and report omitted tokens
+  const supportedCategories = new Set(['color', 'spacing', 'borderRadius', 'radii']);
+  const omittedTokens = tokens.filter((t) => !supportedCategories.has(t.category));
+  const omittedCategories = [...new Set(omittedTokens.map((t) => t.category))];
+
+  if (omittedTokens.length > 0) {
+    lines.push(`// WARNING: ${omittedTokens.length} token(s) across ${omittedCategories.length} category/categories omitted from Swift export:`);
+    for (const cat of omittedCategories) {
+      const count = omittedTokens.filter((t) => t.category === cat).length;
+      const sample = omittedTokens.find((t) => t.category === cat)?.path;
+      lines.push(`// - ${cat} (${count} tokens, e.g. "${sample}")`);
+    }
+    lines.push(`// Native SwiftUI structures for these categories are not yet generated.`);
+    lines.push('');
+  }
+
   lines.push(`public struct NovaTokens {`);
   lines.push(`    public struct Colors {`);
 
@@ -23,11 +40,23 @@ export function exportToSwift(tokens: FlatToken[], options: ExporterOptions = {}
   for (const token of colorTokens) {
     const propName = toCamelCase(token.path.replace(/^color\./, ''));
     let hex = token.resolvedValue;
-    if (hex.startsWith('#')) {
-      // Clean hex
-      const cleanHex = hex.replace('#', '');
+    if (hex && hex.startsWith('#')) {
+      let cleanHex = hex.replace('#', '').toLowerCase();
+      // Expand 3-digit hex (e.g. #f00 -> #ff0000)
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+      } else if (cleanHex.length === 4) {
+        cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2] + cleanHex[3] + cleanHex[3];
+      }
+
       lines.push(`        /// ${token.description || token.path}`);
-      lines.push(`        public static let ${propName} = Color(hex: 0x${cleanHex})`);
+      if (cleanHex.length === 8) {
+        // 8-digit RGBA hex: preserve red, green, blue, alpha
+        lines.push(`        public static let ${propName} = Color(hexRGBA: 0x${cleanHex})`);
+      } else {
+        // 6-digit RGB hex
+        lines.push(`        public static let ${propName} = Color(hex: 0x${cleanHex})`);
+      }
     }
   }
 
@@ -44,17 +73,42 @@ export function exportToSwift(tokens: FlatToken[], options: ExporterOptions = {}
   }
 
   lines.push(`    }`);
+  lines.push('');
+
+  const radiusTokens = tokens.filter((t) => t.category === 'borderRadius');
+  if (radiusTokens.length > 0) {
+    lines.push(`    public struct Radii {`);
+    for (const token of radiusTokens) {
+      const propName = toCamelCase(token.path.replace(/^borderRadius\./, ''));
+      const numeric = parseFloat(token.resolvedValue) || 0;
+      lines.push(`        /// ${token.description || token.path}`);
+      lines.push(`        public static let ${propName}: CGFloat = ${numeric}`);
+    }
+    lines.push(`    }`);
+    lines.push('');
+  }
+
   lines.push(`}`);
   lines.push('');
-  lines.push(`// MARK: - Color Hex Initializer Helper`);
+  lines.push(`// MARK: - Color Hex Initializer Helpers`);
   lines.push(`private extension Color {`);
-  lines.push(`    init(hex: UInt, alpha: Double = 1) {`);
+  lines.push(`    init(hex: UInt32) {`);
   lines.push(`        self.init(`);
   lines.push(`            .sRGB,`);
-  lines.push(`            red: Double((hex >> 16) & 0xff) / 255,`);
-  lines.push(`            green: Double((hex >> 08) & 0xff) / 255,`);
-  lines.push(`            blue: Double((hex >> 00) & 0xff) / 255,`);
-  lines.push(`            opacity: alpha`);
+  lines.push(`            red: Double((hex >> 16) & 0xff) / 255.0,`);
+  lines.push(`            green: Double((hex >> 8) & 0xff) / 255.0,`);
+  lines.push(`            blue: Double(hex & 0xff) / 255.0,`);
+  lines.push(`            opacity: 1.0`);
+  lines.push(`        )`);
+  lines.push(`    }`);
+  lines.push('');
+  lines.push(`    init(hexRGBA: UInt32) {`);
+  lines.push(`        self.init(`);
+  lines.push(`            .sRGB,`);
+  lines.push(`            red: Double((hexRGBA >> 24) & 0xff) / 255.0,`);
+  lines.push(`            green: Double((hexRGBA >> 16) & 0xff) / 255.0,`);
+  lines.push(`            blue: Double((hexRGBA >> 8) & 0xff) / 255.0,`);
+  lines.push(`            opacity: Double(hexRGBA & 0xff) / 255.0`);
   lines.push(`        )`);
   lines.push(`    }`);
   lines.push(`}`);
@@ -62,6 +116,6 @@ export function exportToSwift(tokens: FlatToken[], options: ExporterOptions = {}
   return {
     filename: 'Tokens.swift',
     content: lines.join('\n') + '\n',
-    format: 'typescript', // label for text display
+    format: 'typescript',
   };
 }

@@ -53,4 +53,24 @@ describe('Figma Variables Integration Engine', () => {
     expect(cyanDiff?.status).toBe('modified');
     expect(accentDiff?.status).toBe('added');
   });
+
+  it('rejects live synchronization if figmaToken is omitted', async () => {
+    const client = new FigmaClient();
+    await expect(
+      client.getVariables({
+        fileKey: 'sample-file',
+        dryRun: false,
+      })
+    ).rejects.toThrow('Figma API token is required for live variable synchronization');
+  });
+
+  it('returns fixture variables safely when dryRun is true', async () => {
+    const client = new FigmaClient();
+    const result = await client.getVariables({
+      fileKey: 'sample-file',
+      dryRun: true,
+    });
+    expect(result.status).toBe(200);
+    expect(result.meta?.variables).toBeDefined();
+  });
 });

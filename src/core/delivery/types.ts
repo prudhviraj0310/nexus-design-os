@@ -16,10 +16,12 @@ export interface DeliveryRequest {
 
 export interface DeliveryResult {
   success: boolean;
-  pullRequestUrl?: string;
-  branchCreated?: string;
-  commitSha?: string;
+  dryRun?: boolean;
+  pullRequestUrl?: string | null;
+  branchCreated?: string | null;
+  commitSha?: string | null;
   filesCommitted: string[];
   diffSummary: string;
+  partialFailure?: boolean;
   error?: string;
 }
