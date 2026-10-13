@@ -135,15 +135,40 @@ export default function NexusDocumentationPortal() {
     return cssVar;
   };
 
+  /** Calculates WCAG 2.1 relative luminance and contrast ratio against white (#ffffff) */
+  const getContrastRatioOnWhite = (hexColor: string): { ratio: number; label: string; passAA: boolean } => {
+    if (!hexColor || !hexColor.startsWith('#')) return { ratio: 1, label: 'N/A', passAA: false };
+    let hex = hexColor.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    if (hex.length < 6) return { ratio: 1, label: 'N/A', passAA: false };
+
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    const ratio = Math.round((1.05 / (L + 0.05)) * 10) / 10;
+    const passAA = ratio >= 4.5;
+    const label = `${ratio}:1 on white ${ratio >= 7 ? '(AAA)' : ratio >= 4.5 ? '(AA)' : '(Fail)'}`;
+    return { ratio, label, passAA };
+  };
+
+  const [mcpApiKey, setMcpApiKey] = useState<string>('');
+
   const handleTestMcpPing = async () => {
     setMcpTesting(true);
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (mcpApiKey.trim()) {
+        headers['Authorization'] = `Bearer ${mcpApiKey.trim()}`;
+      }
+
       const res = await fetch('/api/mcp', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer NexusAdmin2026!Enterprise',
-        },
+        headers,
         body: JSON.stringify({
           jsonrpc: '2.0',
           id: 1,
@@ -671,8 +696,25 @@ export default function NexusDocumentationPortal() {
                           <div className="text-[11px] font-mono text-[#2563eb] font-semibold">
                             {t.resolvedValue || t.rawValue}
                           </div>
+                          {(() => {
+                            const val = t.resolvedValue || t.rawValue;
+                            const contrast = getContrastRatioOnWhite(val);
+                            return (
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span
+                                  className={`text-[9px] font-semibold px-1.5 py-0.2 rounded ${
+                                    contrast.ratio >= 4.5
+                                      ? 'bg-[#ecfdf5] text-[#059669]'
+                                      : 'bg-[#fff1f2] text-[#e11d48]'
+                                  }`}
+                                >
+                                  WCAG {contrast.label}
+                                </span>
+                              </div>
+                            );
+                          })()}
                           {t.isAlias && (
-                            <span className="text-[9px] text-[#059669] font-mono bg-[#ecfdf5] px-1 py-0.2 rounded">
+                            <span className="text-[9px] text-[#059669] font-mono bg-[#ecfdf5] px-1 py-0.2 rounded mt-0.5 inline-block">
                               alias ➔ {t.aliasTarget}
                             </span>
                           )}
@@ -1115,7 +1157,7 @@ export default function NexusDocumentationPortal() {
                               nexus: {
                                 url: 'http://16.176.31.130/api/mcp',
                                 transport: 'http',
-                                headers: { Authorization: 'Bearer NexusAdmin2026!Enterprise' },
+                                headers: { Authorization: 'Bearer <YOUR_NEXUS_API_KEY>' },
                               },
                             },
                           },
@@ -1138,7 +1180,7 @@ export default function NexusDocumentationPortal() {
       "url": "http://16.176.31.130/api/mcp",
       "transport": "http",
       "headers": {
-        "Authorization": "Bearer NexusAdmin2026!Enterprise"
+        "Authorization": "Bearer <YOUR_NEXUS_API_KEY>"
       }
     }
   }
@@ -1169,10 +1211,19 @@ export default function NexusDocumentationPortal() {
                     <h2 className="text-sm font-bold text-[#0f172a]">Live MCP Diagnostic Ping Tester</h2>
                     <p className="text-xs text-[#64748b]">Sends JSON-RPC 2.0 tool call to /api/mcp</p>
                   </div>
-                  <button onClick={handleTestMcpPing} disabled={mcpTesting} className="btn-primary text-xs">
-                    {mcpTesting ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
-                    <span>{mcpTesting ? 'Testing MCP...' : 'Ping MCP Server'}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      placeholder="API Key (optional)"
+                      value={mcpApiKey}
+                      onChange={(e) => setMcpApiKey(e.target.value)}
+                      className="bg-[#f8fafc] border border-[#cbd5e1] px-2.5 py-1 rounded-lg text-xs w-44"
+                    />
+                    <button onClick={handleTestMcpPing} disabled={mcpTesting} className="btn-primary text-xs">
+                      {mcpTesting ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
+                      <span>{mcpTesting ? 'Testing...' : 'Ping MCP'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {mcpPingRes && (
