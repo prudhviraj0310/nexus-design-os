@@ -22,3 +22,63 @@ export async function GET() {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const {
+      name,
+      category = 'general',
+      framework = 'react',
+      description,
+      props = [],
+      variants = [],
+      codeSnippet = '',
+      tokenDependencies = [],
+      designSystemId = 'ds-nova-design',
+    } = body;
+
+    if (!name) {
+      return NextResponse.json({ success: false, error: 'Component name is required' }, { status: 400 });
+    }
+
+    const { db } = await getDb();
+    const id = `comp-${name.toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`;
+
+    await db
+      .insert(components)
+      .values({
+        id,
+        designSystemId,
+        name,
+        category,
+        framework,
+        description,
+        props,
+        variants,
+        codeSnippet,
+        tokenDependencies,
+        isDeprecated: false,
+      })
+      .onConflictDoUpdate({
+        target: components.id,
+        set: {
+          category,
+          framework,
+          description,
+          props,
+          variants,
+          codeSnippet,
+          tokenDependencies,
+        },
+      });
+
+    return NextResponse.json({
+      success: true,
+      id,
+      message: `Component "${name}" saved successfully.`,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}

@@ -31,3 +31,7 @@ yarn-error.log*
 .cloners/
 scratch-audit-test.tsx
 test-all-endpoints.sh
+testing.pem
+*.pem
+*.zip
+

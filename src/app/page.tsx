@@ -56,6 +56,7 @@ import {
   GitFork,
   Lock,
   LogOut,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 // Brand & Integration SVG Helpers using cloned official assets
@@ -108,6 +109,7 @@ export default function SupernovaPlatform() {
     | 'feedback'
     | 'tokens'
     | 'components'
+    | 'assets'
     | 'figma'
     | 'audit'
     | 'releases'
@@ -129,6 +131,32 @@ export default function SupernovaPlatform() {
   const [newTokenDesc, setNewTokenDesc] = useState<string>('Cyan accent highlight');
   const [savingToken, setSavingToken] = useState<boolean>(false);
 
+  // Vector Assets state
+  const [assetsList, setAssetsList] = useState<any[]>([]);
+  const [loadingAssets, setLoadingAssets] = useState<boolean>(true);
+  const [assetSearch, setAssetSearch] = useState<string>('');
+  const [selectedAssetCategory, setSelectedAssetCategory] = useState<string>('all');
+  const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
+  const [showAddAssetModal, setShowAddAssetModal] = useState<boolean>(false);
+  const [newAssetName, setNewAssetName] = useState<string>('Compass');
+  const [newAssetCategory, setNewAssetCategory] = useState<string>('icons');
+  const [newAssetSvg, setNewAssetSvg] = useState<string>('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>');
+  const [newAssetTags, setNewAssetTags] = useState<string>('navigation, direction, maps');
+  const [savingAsset, setSavingAsset] = useState<boolean>(false);
+
+  // Living Documentation Pages state
+  const [docPagesList, setDocPagesList] = useState<any[]>([]);
+  const [loadingDocPages, setLoadingDocPages] = useState<boolean>(true);
+  const [selectedDocPage, setSelectedDocPage] = useState<any | null>(null);
+  const [editingDocTitle, setEditingDocTitle] = useState<string>('');
+  const [editingDocContent, setEditingDocContent] = useState<string>('');
+  const [savingDocPage, setSavingDocPage] = useState<boolean>(false);
+
+  // Figma Diff Modal & Review state
+  const [showFigmaDiffModal, setShowFigmaDiffModal] = useState<boolean>(false);
+  const [figmaDiffMode, setFigmaDiffMode] = useState<'preview' | 'applied'>('preview');
+  const [figmaDiffCommitSuccess, setFigmaDiffCommitSuccess] = useState<boolean>(false);
+
   // Components state
   const [components, setComponents] = useState<any[]>([]);
   const [selectedComponent, setSelectedComponent] = useState<any>(null);
@@ -136,6 +164,10 @@ export default function SupernovaPlatform() {
   const [componentSize, setComponentSize] = useState<string>('md');
   const [componentFramework, setComponentFramework] = useState<'react' | 'html' | 'swift' | 'kotlin'>('react');
   const [componentTab, setComponentTab] = useState<'preview' | 'props' | 'code' | 'tokens'>('preview');
+  const [storybookIframeMode, setStorybookIframeMode] = useState<boolean>(false);
+  const [storybookUrl, setStorybookUrl] = useState<string>('http://localhost:6006');
+  const [switchChecked, setSwitchChecked] = useState<boolean>(true);
+  const [showTestModal, setShowTestModal] = useState<boolean>(false);
 
   // Interactive component testing state
   const [buttonClicks, setButtonClicks] = useState<number>(0);
@@ -397,9 +429,113 @@ export function PrimaryCard() {
     }
   };
 
+  // Asset Management Handlers
+  const loadAssets = async () => {
+    try {
+      setLoadingAssets(true);
+      const res = await fetch('/api/assets');
+      const data = await res.json();
+      if (data.assets) {
+        setAssetsList(data.assets);
+        if (!selectedAsset && data.assets.length > 0) {
+          setSelectedAsset(data.assets[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load assets', err);
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  const handleAddAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingAsset(true);
+    try {
+      const tagsArray = newAssetTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const res = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newAssetName.trim(),
+          category: newAssetCategory,
+          svgContent: newAssetSvg.trim(),
+          tags: tagsArray,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowAddAssetModal(false);
+        await loadAssets();
+      } else {
+        alert(`Error adding asset: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Failed to add asset: ${err.message}`);
+    } finally {
+      setSavingAsset(false);
+    }
+  };
+
+  // Living Documentation Handlers
+  const loadDocPages = async () => {
+    try {
+      setLoadingDocPages(true);
+      const res = await fetch('/api/docs');
+      const data = await res.json();
+      if (data.pages) {
+        setDocPagesList(data.pages);
+        if (data.pages.length > 0) {
+          setSelectedDocPage(data.pages[0]);
+          setEditingDocTitle(data.pages[0].title);
+          setEditingDocContent(data.pages[0].content);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load doc pages', err);
+    } finally {
+      setLoadingDocPages(false);
+    }
+  };
+
+  const handleSaveDocPage = async () => {
+    if (!selectedDocPage) return;
+    setSavingDocPage(true);
+    try {
+      const res = await fetch('/api/docs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedDocPage.id,
+          slug: selectedDocPage.slug,
+          title: editingDocTitle,
+          category: selectedDocPage.category,
+          content: editingDocContent,
+          order: selectedDocPage.order,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadDocPages();
+        alert('Documentation page updated successfully!');
+      } else {
+        alert(`Failed to update doc page: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Error saving doc page: ${err.message}`);
+    } finally {
+      setSavingDocPage(false);
+    }
+  };
+
   useEffect(() => {
     loadTokens();
     loadComponents();
+    loadAssets();
+    loadDocPages();
     loadReleases();
     loadExport('tailwind');
     checkGithubStatus();
@@ -468,10 +604,13 @@ export function PrimaryCard() {
     }
   };
 
-  // 4. Figma Sync Action
-  const handleSyncFigma = async () => {
+  // 4. Figma Sync Action (Two-stage dry-run and commit flow)
+  const handleSyncFigma = async (apply: boolean = false) => {
     setFigmaSyncing(true);
-    setFigmaDiffResult(null);
+    if (!apply) {
+      setFigmaDiffResult(null);
+      setFigmaDiffCommitSuccess(false);
+    }
     try {
       const res = await fetch('/api/figma/sync', {
         method: 'POST',
@@ -482,12 +621,16 @@ export function PrimaryCard() {
           personalAccessToken: figmaToken,
           modeName: figmaMode,
           mode: figmaMode,
-          applyChanges: true,
+          dryRun: !apply,
+          applyChanges: apply,
         }),
       });
       const data = await res.json();
       setFigmaDiffResult(data);
-      if (data.success) {
+      setFigmaDiffMode(apply ? 'applied' : 'preview');
+      setShowFigmaDiffModal(true);
+      if (data.success && apply) {
+        setFigmaDiffCommitSuccess(true);
         await loadTokens();
       }
     } catch (err) {
@@ -870,6 +1013,21 @@ Endpoint: \`${mcpEndpointUrl}\`
                 </button>
 
                 <button
+                  onClick={() => setActiveNav('assets')}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    activeNav === 'assets'
+                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
+                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Grid size={15} />
+                    <span>Vector Assets</span>
+                  </div>
+                  <span className="text-[11px] text-[#94a3b8]">{assetsList.length}</span>
+                </button>
+
+                <button
                   onClick={() => setActiveNav('figma')}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     activeNav === 'figma'
@@ -962,13 +1120,14 @@ Endpoint: \`${mcpEndpointUrl}\`
               {activeNav === 'overview' && 'Overview'}
               {activeNav === 'contexts' && 'Contexts'}
               {activeNav === 'automation' && 'Code automation'}
-              {activeNav === 'docs' && 'Documentation'}
+              {activeNav === 'docs' && 'Documentation Studio'}
               {activeNav === 'mcp-analytics' && 'MCP analytics'}
               {activeNav === 'docs-analytics' && 'Documentation analytics'}
               {activeNav === 'code-adoption' && 'Code adoption & compliance'}
               {activeNav === 'feedback' && 'Agent & Developer feedback'}
               {activeNav === 'tokens' && 'Design Tokens'}
               {activeNav === 'components' && 'Components Sandbox'}
+              {activeNav === 'assets' && 'Vector Assets & Icons'}
               {activeNav === 'figma' && 'Figma Variables & Styles'}
               {activeNav === 'audit' && 'AST Code Compliance Audit'}
               {activeNav === 'releases' && 'Releases & Version Tags'}
@@ -992,6 +1151,27 @@ Endpoint: \`${mcpEndpointUrl}\`
               >
                 <Plus size={14} />
                 <span>Add Token</span>
+              </button>
+            )}
+
+            {activeNav === 'assets' && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn-primary text-xs"
+              >
+                <Plus size={14} />
+                <span>Add Vector Asset</span>
+              </button>
+            )}
+
+            {activeNav === 'docs' && selectedDocPage && (
+              <button
+                onClick={handleSaveDocPage}
+                disabled={savingDocPage}
+                className="btn-primary text-xs"
+              >
+                <Check size={14} />
+                <span>{savingDocPage ? 'Saving...' : 'Save Document'}</span>
               </button>
             )}
 
@@ -1053,16 +1233,16 @@ Endpoint: \`${mcpEndpointUrl}\`
                   className="bg-white border border-[#e2e8f0] p-4 rounded-lg shadow-sm hover:border-[#2563eb] cursor-pointer transition-all"
                 >
                   <div className="text-xs font-semibold text-[#64748b]">Components</div>
-                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{components.length} - 0</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-1">Buttons, inputs, cards, badges</div>
+                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{components.length}</div>
+                  <div className="text-[11px] text-[#94a3b8] mt-1">Buttons, inputs, cards, badges, modals</div>
                 </div>
 
                 <div
-                  onClick={() => setActiveNav('automation')}
+                  onClick={() => setActiveNav('assets')}
                   className="bg-white border border-[#e2e8f0] p-4 rounded-lg shadow-sm hover:border-[#2563eb] cursor-pointer transition-all"
                 >
                   <div className="text-xs font-semibold text-[#64748b]">Assets</div>
-                  <div className="text-2xl font-bold text-[#0f172a] mt-1">26</div>
+                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{assetsList.length}</div>
                   <div className="text-[11px] text-[#94a3b8] mt-1">Brand logos, SVGs, vector icons</div>
                 </div>
 
@@ -1071,8 +1251,8 @@ Endpoint: \`${mcpEndpointUrl}\`
                   className="bg-white border border-[#e2e8f0] p-4 rounded-lg shadow-sm hover:border-[#2563eb] cursor-pointer transition-all"
                 >
                   <div className="text-xs font-semibold text-[#64748b]">Docs pages</div>
-                  <div className="text-2xl font-bold text-[#0f172a] mt-1">5</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-1">Overview, Tokens, Components, API, MCP</div>
+                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{docPagesList.length}</div>
+                  <div className="text-[11px] text-[#94a3b8] mt-1">Welcome, Foundations, Components, MCP</div>
                 </div>
               </div>
 
@@ -2254,53 +2434,160 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* VIEW: DOCUMENTATION (Interactive Reader matching Screenshot 1 & Guides)   */}
           {/* ========================================================================= */}
           {activeNav === 'docs' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-[#0f172a]">Supernova Documentation</h2>
-                    <p className="text-xs text-[#64748b] mt-1">
-                      Published documentation site for My Design System. Share with designers, engineers, and AI agents.
-                    </p>
+            <div className="space-y-6 max-w-6xl mx-auto">
+              {/* Documentation Header */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={18} className="text-[#2563eb]" />
+                    <h2 className="text-base font-bold text-[#0f172a]">Living Documentation Studio</h2>
                   </div>
+                  <p className="text-xs text-[#64748b] mt-1">
+                    Author, edit, and maintain design system guidelines and component specs. Grounded directly in MCP for AI tools.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5">
                   <a
                     href="/docs"
                     target="_blank"
-                    className="btn-primary text-xs"
+                    rel="noreferrer"
+                    className="btn-secondary text-xs flex items-center gap-1.5"
                   >
-                    <span>Open Live Portal ↗</span>
+                    <span>Open Live Portal</span>
+                    <ArrowUpRight size={13} />
                   </a>
+                  {selectedDocPage && (
+                    <button
+                      onClick={handleSaveDocPage}
+                      disabled={savingDocPage}
+                      className="btn-primary text-xs flex items-center gap-1.5"
+                    >
+                      <Check size={13} />
+                      <span>{savingDocPage ? 'Saving...' : 'Save Document'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Documentation Articles Grid */}
-              <div className="grid grid-cols-2 gap-5">
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-3">
-                  <div className="flex items-center gap-2 text-[#2563eb]">
-                    <Sparkles size={16} />
-                    <h3 className="text-sm font-bold text-[#0f172a]">Contexts 101</h3>
-                  </div>
-                  <p className="text-xs text-[#64748b]">
-                    Contexts are reusable units of knowledge that provide guidance, instructions, documentation, and organizational expertise to humans and AI systems.
-                  </p>
-                  <div className="text-[11px] text-[#475569] bg-[#f8fafc] p-2.5 rounded-lg border border-[#e2e8f0]">
-                    <strong>Included in context:</strong> Documentation pages, Design tokens, Token themes, Assets, Code components, Workspace knowledge.
-                  </div>
+              {/* Documentation Page Selector Tabs */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-3 shadow-sm flex items-center justify-between overflow-x-auto">
+                <div className="flex items-center gap-2">
+                  {docPagesList.map((page) => (
+                    <button
+                      key={page.id}
+                      onClick={() => {
+                        setSelectedDocPage(page);
+                        setEditingDocTitle(page.title);
+                        setEditingDocContent(page.content);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${
+                        selectedDocPage?.id === page.id
+                          ? 'bg-[#2563eb] text-white shadow-xs'
+                          : 'bg-[#f8fafc] text-[#475569] hover:bg-[#e2e8f0]'
+                      }`}
+                    >
+                      <FileText size={13} />
+                      <span>{page.title}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                        selectedDocPage?.id === page.id ? 'bg-white/20 text-white' : 'bg-[#e2e8f0] text-[#64748b]'
+                      }`}>
+                        /{page.slug}
+                      </span>
+                    </button>
+                  ))}
                 </div>
 
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-3">
-                  <div className="flex items-center gap-2 text-[#059669]">
-                    <Layers size={16} />
-                    <h3 className="text-sm font-bold text-[#0f172a]">Design Tokens Architecture</h3>
-                  </div>
-                  <p className="text-xs text-[#64748b]">
-                    Full breakdown of token tiers (Global, Semantic, Component) and mathematical alias resolution.
-                  </p>
-                  <div className="text-[11px] text-[#475569] bg-[#f8fafc] p-2.5 rounded-lg border border-[#e2e8f0]">
-                    <strong>Active tokens:</strong> {tokens.length} tokens registered in Postgres database with instantaneous MCP query access.
-                  </div>
+                <div className="text-[11px] text-[#64748b] px-2 font-mono">
+                  {docPagesList.length} pages published
                 </div>
               </div>
+
+              {/* Dual-Pane Editor & Live Document Preview */}
+              {selectedDocPage ? (
+                <div className="grid grid-cols-2 gap-6 items-start">
+                  {/* Left Column: Markdown Editor */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+                      <div className="flex items-center gap-2">
+                        <Code2 size={16} className="text-[#2563eb]" />
+                        <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">Markdown Editor</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#eff6ff] text-[#2563eb] capitalize">
+                        {selectedDocPage.category}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-[#475569] block mb-1">Page Title</label>
+                      <input
+                        type="text"
+                        value={editingDocTitle}
+                        onChange={(e) => setEditingDocTitle(e.target.value)}
+                        className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs font-medium text-[#0f172a] focus:outline-none focus:border-[#2563eb]"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-[#475569]">Markdown Content</label>
+                        <span className="text-[11px] font-mono text-[#94a3b8]">{editingDocContent.length} chars</span>
+                      </div>
+                      <textarea
+                        rows={16}
+                        value={editingDocContent}
+                        onChange={(e) => setEditingDocContent(e.target.value)}
+                        className="w-full bg-[#0f172a] text-[#f8fafc] font-mono text-xs p-4 rounded-lg leading-relaxed focus:outline-none focus:ring-1 focus:ring-[#2563eb]"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 text-[11px] text-[#64748b]">
+                      <span>Saved automatically on commit</span>
+                      <button
+                        onClick={handleSaveDocPage}
+                        disabled={savingDocPage}
+                        className="btn-primary text-xs py-1.5 px-3"
+                      >
+                        {savingDocPage ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Live Document Preview */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+                      <div className="flex items-center gap-2">
+                        <Eye size={16} className="text-[#059669]" />
+                        <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">Live Reader Preview</span>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(editingDocContent, 'doc-preview')}
+                        className="btn-secondary text-[11px] py-1 px-2 flex items-center gap-1"
+                      >
+                        {copiedKey === 'doc-preview' ? <Check size={12} className="text-[#10b981]" /> : <Copy size={12} />}
+                        <span>{copiedKey === 'doc-preview' ? 'Copied' : 'Copy MD'}</span>
+                      </button>
+                    </div>
+
+                    <div className="prose prose-slate max-w-none space-y-4">
+                      <h1 className="text-xl font-bold text-[#0f172a] tracking-tight">{editingDocTitle}</h1>
+                      <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg text-xs text-[#475569] leading-relaxed whitespace-pre-wrap font-sans">
+                        {editingDocContent}
+                      </div>
+
+                      <div className="p-3 bg-[#eff6ff] border border-[#bfdbfe] rounded-lg flex items-start gap-2.5 text-xs text-[#1e40af]">
+                        <Info size={16} className="shrink-0 mt-0.5 text-[#2563eb]" />
+                        <div>
+                          <strong>MCP Context Grounding:</strong> This document is automatically embedded in Cursor, Claude Code, and Windsurf AI agent context windows via <code>/api/mcp</code>.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white border border-[#e2e8f0] rounded-xl p-12 text-center text-[#64748b]">
+                  <p className="text-sm">No documentation page selected. Select a page from the tabs above.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -2459,90 +2746,366 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* ========================================================================= */}
           {activeNav === 'components' && (
             <div className="space-y-6 max-w-6xl mx-auto">
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm">
-                <h2 className="text-base font-bold text-[#0f172a]">Interactive Components Sandbox</h2>
-                <p className="text-xs text-[#64748b] mt-1">
-                  Preview and test design system components styled with genuine Supernova design tokens.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6">
-                {/* Button Component */}
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-[#0f172a]">Button</h3>
-                    <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
-                      var(--color-brand-primary)
-                    </span>
-                  </div>
-                  <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center">
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-[#0f172a]">Interactive Components Sandbox</h2>
+                  <p className="text-xs text-[#64748b] mt-1">
+                    Living design system components with Storybook iframe bridge and real token styling.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 bg-[#f8fafc] border border-[#cbd5e1] p-1 rounded-lg text-xs">
                     <button
-                      onClick={() => setButtonClicks((c) => c + 1)}
-                      className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                      onClick={() => setStorybookIframeMode(false)}
+                      className={`px-2.5 py-1 rounded font-medium transition-all ${
+                        !storybookIframeMode ? 'bg-[#2563eb] text-white' : 'text-[#475569] hover:text-[#0f172a]'
+                      }`}
                     >
-                      Clicked: {buttonClicks} times
+                      React Playground
+                    </button>
+                    <button
+                      onClick={() => setStorybookIframeMode(true)}
+                      className={`px-2.5 py-1 rounded font-medium transition-all ${
+                        storybookIframeMode ? 'bg-[#ff4785] text-white' : 'text-[#475569] hover:text-[#0f172a]'
+                      }`}
+                    >
+                      Storybook Sandbox
                     </button>
                   </div>
                 </div>
+              </div>
 
-                {/* Input Component */}
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-[#0f172a]">Input</h3>
-                    <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
-                      var(--border-subtle)
-                    </span>
+              {storybookIframeMode ? (
+                <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between bg-[#f8fafc] p-3 rounded-lg border border-[#e2e8f0]">
+                    <div className="flex items-center gap-2">
+                      <IntegrationLogo name="storybook" size={16} />
+                      <span className="text-xs font-semibold text-[#0f172a]">Storybook Iframe Host:</span>
+                      <input
+                        type="text"
+                        value={storybookUrl}
+                        onChange={(e) => setStorybookUrl(e.target.value)}
+                        className="bg-white border border-[#cbd5e1] px-2 py-1 rounded text-xs font-mono w-64"
+                        placeholder="http://localhost:6006"
+                      />
+                    </div>
+                    <span className="text-[11px] text-[#64748b]">Connected via iframe sandbox bridge</span>
                   </div>
-                  <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg">
-                    <input
-                      type="text"
-                      value={inputVal}
-                      onChange={(e) => setInputVal(e.target.value)}
-                      className="w-full bg-white border border-[#cbd5e1] px-3 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[#2563eb]"
+                  <div className="border border-[#cbd5e1] rounded-xl overflow-hidden h-[540px] bg-[#f8fafc] flex items-center justify-center">
+                    <iframe
+                      src={storybookUrl}
+                      title="Storybook Preview"
+                      className="w-full h-full border-0"
+                      onError={() => {}}
                     />
                   </div>
                 </div>
-
-                {/* Badge Component */}
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-[#0f172a]">Badge</h3>
-                    <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
-                      var(--accent-emerald)
-                    </span>
+              ) : (
+                <div className="grid grid-cols-3 gap-6">
+                  {/* Button Component */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[#0f172a]">Button</h3>
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                        var(--color-brand-primary)
+                      </span>
+                    </div>
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => setButtonClicks((c) => c + 1)}
+                        className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95"
+                      >
+                        Clicked: {buttonClicks} times
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center gap-2">
-                    <span className="px-2.5 py-1 text-xs font-semibold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] rounded-full">
-                      Success Status
-                    </span>
+
+                  {/* Input Component */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[#0f172a]">Input</h3>
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                        var(--border-subtle)
+                      </span>
+                    </div>
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg">
+                      <input
+                        type="text"
+                        value={inputVal}
+                        onChange={(e) => setInputVal(e.target.value)}
+                        className="w-full bg-white border border-[#cbd5e1] px-3 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[#2563eb]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Badge Component */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[#0f172a]">Badge</h3>
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                        var(--accent-emerald)
+                      </span>
+                    </div>
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center gap-2">
+                      <span className="px-2.5 py-1 text-xs font-semibold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] rounded-full">
+                        Success Status
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Component */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[#0f172a]">Card</h3>
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                        layout / container
+                      </span>
+                    </div>
+                    <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg">
+                      <div className="bg-white border border-[#cbd5e1] p-3 rounded-lg shadow-xs">
+                        <div className="text-xs font-bold text-[#0f172a]">Elevated Surface</div>
+                        <p className="text-[11px] text-[#64748b] mt-1">Structured design token container card.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal Trigger Component */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[#0f172a]">Modal Dialog</h3>
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                        overlay / dialog
+                      </span>
+                    </div>
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => setShowTestModal(true)}
+                        className="px-3 py-1.5 bg-[#0f172a] text-white rounded-lg text-xs font-medium hover:bg-[#1e293b]"
+                      >
+                        Open Dialog Preview
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Switch Component */}
+                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[#0f172a]">Switch</h3>
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                        form / control
+                      </span>
+                    </div>
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => setSwitchChecked(!switchChecked)}
+                        className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                          switchChecked ? 'bg-[#2563eb]' : 'bg-[#cbd5e1]'
+                        }`}
+                      >
+                        <div
+                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                            switchChecked ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs font-medium text-[#475569]">
+                        {switchChecked ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* VIEW: FIGMA SYNC                                                          */}
+          {/* VIEW: VECTOR ASSETS & ICONS                                                */}
+          {/* ========================================================================= */}
+          {activeNav === 'assets' && (
+            <div className="space-y-6 max-w-6xl mx-auto">
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Grid size={18} className="text-[#2563eb]" />
+                    <h2 className="text-base font-bold text-[#0f172a]">Vector Asset & Icon Library</h2>
+                  </div>
+                  <p className="text-xs text-[#64748b] mt-1">
+                    Multi-platform SVG icons and brand assets with 1-click React JSX and raw SVG export.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddAssetModal(true)}
+                  className="btn-primary text-xs flex items-center gap-1.5"
+                >
+                  <Plus size={14} />
+                  <span>Add Vector Asset</span>
+                </button>
+              </div>
+
+              {/* Filter and Search Bar */}
+              <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 shadow-sm flex items-center justify-between gap-4">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-2.5 text-[#94a3b8]" />
+                  <input
+                    type="text"
+                    value={assetSearch}
+                    onChange={(e) => setAssetSearch(e.target.value)}
+                    placeholder="Search icons by name or tag (e.g. arrow, copy, terminal, code)..."
+                    className="w-full bg-[#f8fafc] border border-[#cbd5e1] pl-9 pr-3 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[#2563eb]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {['all', 'icons', 'logos', 'illustrations'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedAssetCategory(cat)}
+                      className={`px-3 py-1 rounded-lg text-xs capitalize transition-all ${
+                        selectedAssetCategory === cat
+                          ? 'bg-[#0f172a] text-white font-semibold'
+                          : 'bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Asset Grid */}
+              <div className="grid grid-cols-4 gap-4">
+                {assetsList
+                  .filter((a) => {
+                    const matchCat = selectedAssetCategory === 'all' || a.category === selectedAssetCategory;
+                    const matchQ =
+                      !assetSearch.trim() ||
+                      a.name.toLowerCase().includes(assetSearch.toLowerCase()) ||
+                      (Array.isArray(a.tags) && a.tags.some((t: string) => t.toLowerCase().includes(assetSearch.toLowerCase())));
+                    return matchCat && matchQ;
+                  })
+                  .map((asset) => (
+                    <div
+                      key={asset.id}
+                      onClick={() => setSelectedAsset(asset)}
+                      className={`bg-white border rounded-xl p-4 shadow-sm hover:border-[#2563eb] cursor-pointer transition-all space-y-3 ${
+                        selectedAsset?.id === asset.id ? 'border-[#2563eb] ring-1 ring-[#2563eb]' : 'border-[#e2e8f0]'
+                      }`}
+                    >
+                      <div className="h-20 bg-[#f8fafc] rounded-lg border border-[#f1f5f9] flex items-center justify-center p-3 text-[#0f172a]">
+                        <div
+                          className="w-8 h-8 flex items-center justify-center"
+                          dangerouslySetInnerHTML={{ __html: asset.svgContent }}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#0f172a]">{asset.name}</span>
+                          <span className="text-[10px] font-mono text-[#94a3b8]">{asset.width}×{asset.height}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(asset.tags) &&
+                            asset.tags.slice(0, 3).map((tag: string, idx: number) => (
+                              <span key={idx} className="text-[10px] bg-[#f1f5f9] text-[#64748b] px-1.5 py-0.2 rounded font-mono">
+                                #{tag}
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-[11px]">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(asset.svgContent, `svg-${asset.id}`);
+                          }}
+                          className="text-[#2563eb] hover:underline flex items-center gap-1 font-medium"
+                        >
+                          {copiedKey === `svg-${asset.id}` ? <Check size={11} className="text-[#10b981]" /> : <Copy size={11} />}
+                          <span>{copiedKey === `svg-${asset.id}` ? 'Copied' : 'SVG'}</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const jsx = `export function ${asset.name}Icon(props: React.SVGProps<SVGSVGElement>) {\n  return (\n    ${asset.svgContent.replace('<svg', '<svg {...props}')}\n  );\n}`;
+                            copyToClipboard(jsx, `jsx-${asset.id}`);
+                          }}
+                          className="text-[#475569] hover:underline flex items-center gap-1 font-medium"
+                        >
+                          {copiedKey === `jsx-${asset.id}` ? <Check size={11} className="text-[#10b981]" /> : <Code2 size={11} />}
+                          <span>{copiedKey === `jsx-${asset.id}` ? 'Copied' : 'JSX'}</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerDownload(`${asset.name.toLowerCase()}.svg`, asset.svgContent, 'image/svg+xml');
+                          }}
+                          className="text-[#64748b] hover:text-[#0f172a]"
+                          title="Download SVG"
+                        >
+                          <Download size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Selected Asset Inspector */}
+              {selectedAsset && (
+                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">Asset Code Snippet:</span>
+                      <span className="text-xs font-mono font-semibold text-[#2563eb]">{selectedAsset.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => copyToClipboard(selectedAsset.svgContent, 'inspector-svg')}
+                        className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
+                      >
+                        {copiedKey === 'inspector-svg' ? <Check size={12} className="text-[#10b981]" /> : <Copy size={12} />}
+                        <span>Copy SVG</span>
+                      </button>
+                    </div>
+                  </div>
+                  <pre className="p-3 bg-[#0f172a] text-[#f8fafc] font-mono text-[11px] rounded-lg overflow-x-auto">
+                    {selectedAsset.svgContent}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* VIEW: FIGMA SYNC WITH PRE-SYNC DIFF & TRACEABILITY MODAL                  */}
           {/* ========================================================================= */}
           {activeNav === 'figma' && (
-            <div className="space-y-6 max-w-4xl mx-auto">
+            <div className="space-y-6 max-w-5xl mx-auto">
               <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <IntegrationLogo name="figma" size={20} />
-                  <h2 className="text-base font-bold text-[#0f172a]">Figma Variables & Styles Synchronizer</h2>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <IntegrationLogo name="figma" size={22} />
+                    <div>
+                      <h2 className="text-base font-bold text-[#0f172a]">Figma Variables & Styles Synchronizer</h2>
+                      <p className="text-xs text-[#64748b] mt-0.5">
+                        Two-stage sync: Inspect visual token diffs prior to committing changes to the database.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] rounded-full text-xs font-semibold">
+                    Supernova Traceability Engine
+                  </span>
                 </div>
-                <p className="text-xs text-[#64748b]">
-                  Import color modes, radii, and typography scales from your Figma design files directly into the Supernova design system.
-                </p>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 pt-2">
                   <div>
                     <label className="text-xs font-semibold text-[#475569] block mb-1">Figma File Key</label>
                     <input
                       type="text"
                       value={figmaFileKey}
                       onChange={(e) => setFigmaFileKey(e.target.value)}
-                      className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs font-mono"
+                      placeholder="e.g. 4s7xK0m2zN_core_ui_kit"
+                      className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs font-mono focus:outline-none focus:border-[#2563eb]"
                     />
                   </div>
 
@@ -2551,32 +3114,199 @@ Endpoint: \`${mcpEndpointUrl}\`
                     <select
                       value={figmaMode}
                       onChange={(e) => setFigmaMode(e.target.value)}
-                      className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs"
+                      className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-[#2563eb]"
                     >
                       <option value="Light">Light Mode</option>
                       <option value="Dark">Dark Mode</option>
                     </select>
                   </div>
-
-                  <button
-                    onClick={handleSyncFigma}
-                    disabled={figmaSyncing}
-                    className="btn-primary text-xs"
-                  >
-                    {figmaSyncing ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
-                    <span>{figmaSyncing ? 'Synchronizing Figma Tokens...' : 'Synchronize Tokens Now'}</span>
-                  </button>
                 </div>
 
-                {figmaDiffResult && (
-                  <div className="mt-4 p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg text-xs">
-                    <div className="font-semibold text-[#0f172a] mb-2">Sync Diff Results:</div>
-                    <pre className="text-[11px] font-mono text-[#334155]">
-                      {JSON.stringify(figmaDiffResult, null, 2)}
-                    </pre>
-                  </div>
-                )}
+                <div>
+                  <label className="text-xs font-semibold text-[#475569] block mb-1">Figma Personal Access Token (Optional override)</label>
+                  <input
+                    type="password"
+                    value={figmaToken}
+                    onChange={(e) => setFigmaToken(e.target.value)}
+                    placeholder="figd_... (Defaults to environment FIGMA_TOKEN)"
+                    className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-lg text-xs font-mono focus:outline-none focus:border-[#2563eb]"
+                  />
+                </div>
+
+                {/* Two-Stage Action Bar */}
+                <div className="pt-2 flex items-center gap-3">
+                  <button
+                    onClick={() => handleSyncFigma(false)}
+                    disabled={figmaSyncing}
+                    className="btn-secondary text-xs py-2 px-4 flex items-center gap-2 border-2 border-[#2563eb]/20 text-[#2563eb] hover:bg-[#eff6ff]"
+                  >
+                    {figmaSyncing && figmaDiffMode === 'preview' ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : (
+                      <Eye size={13} />
+                    )}
+                    <span>Inspect & Preview Diff (Dry Run)</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleSyncFigma(true)}
+                    disabled={figmaSyncing}
+                    className="btn-primary text-xs py-2 px-4 flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8]"
+                  >
+                    {figmaSyncing && figmaDiffMode === 'applied' ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : (
+                      <Play size={13} />
+                    )}
+                    <span>Direct Sync & Apply</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Visual Pre-Sync Diff & Traceability Dashboard */}
+              {figmaDiffResult && (
+                <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0f172a]">
+                        {figmaDiffMode === 'preview' ? 'Pre-Sync Token Diff Analysis (Dry Run)' : 'Synchronization Results'}
+                      </h3>
+                      <p className="text-xs text-[#64748b]">
+                        File: <span className="font-mono text-[#0f172a]">{figmaDiffResult.fileKey}</span> • Mode: <span className="font-semibold">{figmaDiffResult.modeName}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {figmaDiffMode === 'preview' && (
+                        <button
+                          onClick={() => handleSyncFigma(true)}
+                          disabled={figmaSyncing}
+                          className="btn-primary text-xs py-1.5 px-3 bg-[#10b981] hover:bg-[#059669]"
+                        >
+                          <Check size={13} />
+                          <span>Commit & Apply Changes ({figmaDiffResult.diff?.length || 0})</span>
+                        </button>
+                      )}
+                      {figmaDiffCommitSuccess && (
+                        <span className="px-3 py-1 bg-[#ecfdf5] border border-[#a7f3d0] rounded-full text-xs font-semibold text-[#065f46] flex items-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-[#10b981]" />
+                          <span>Applied to Database</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 4 Metrics Comparison Bar */}
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg">
+                      <div className="text-[11px] font-semibold text-[#64748b]">Total In Figma</div>
+                      <div className="text-xl font-bold text-[#0f172a] mt-1">{figmaDiffResult.totalVariablesFound || 0}</div>
+                    </div>
+
+                    <div className="p-3 bg-[#ecfdf5] border border-[#a7f3d0] rounded-lg">
+                      <div className="text-[11px] font-semibold text-[#065f46]">Tokens Added</div>
+                      <div className="text-xl font-bold text-[#059669] mt-1">
+                        {figmaDiffResult.diff?.filter((d: any) => d.status === 'added').length || 0}
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-[#fffbeb] border border-[#fef3c7] rounded-lg">
+                      <div className="text-[11px] font-semibold text-[#92400e]">Tokens Modified</div>
+                      <div className="text-xl font-bold text-[#d97706] mt-1">
+                        {figmaDiffResult.diff?.filter((d: any) => d.status === 'modified').length || 0}
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-[#fef2f2] border border-[#fecaca] rounded-lg">
+                      <div className="text-[11px] font-semibold text-[#991b1b]">Tokens Removed</div>
+                      <div className="text-xl font-bold text-[#dc2626] mt-1">
+                        {figmaDiffResult.diff?.filter((d: any) => d.status === 'removed').length || 0}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Side-by-Side Token Diff Table */}
+                  <div className="overflow-x-auto border border-[#e2e8f0] rounded-lg">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#f8fafc] text-[#475569] border-b border-[#e2e8f0] uppercase tracking-wider text-[10px] font-bold">
+                        <tr>
+                          <th className="py-2.5 px-3">Diff Status</th>
+                          <th className="py-2.5 px-3">Token Path</th>
+                          <th className="py-2.5 px-3">Category</th>
+                          <th className="py-2.5 px-3">Current DB Value</th>
+                          <th className="py-2.5 px-3">Incoming Figma Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f1f5f9]">
+                        {figmaDiffResult.diff && figmaDiffResult.diff.length > 0 ? (
+                          figmaDiffResult.diff.map((item: any, idx: number) => {
+                            const isColor = item.category === 'color' || (item.newValue && item.newValue.startsWith('#')) || (item.oldValue && item.oldValue.startsWith('#'));
+                            return (
+                              <tr key={idx} className="hover:bg-[#f8fafc] transition-colors">
+                                <td className="py-2 px-3">
+                                  {item.status === 'added' && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ecfdf5] text-[#059669]">
+                                      + ADDED
+                                    </span>
+                                  )}
+                                  {item.status === 'modified' && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fffbeb] text-[#d97706]">
+                                      ~ MODIFIED
+                                    </span>
+                                  )}
+                                  {item.status === 'removed' && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fef2f2] text-[#dc2626]">
+                                      - REMOVED
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3 font-mono font-medium text-[#0f172a]">{item.path}</td>
+                                <td className="py-2 px-3 text-[#64748b] capitalize">{item.category || 'token'}</td>
+                                <td className="py-2 px-3 font-mono text-[#64748b]">
+                                  {item.oldValue ? (
+                                    <div className="flex items-center gap-1.5">
+                                      {isColor && (
+                                        <span
+                                          className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0"
+                                          style={{ backgroundColor: item.oldValue }}
+                                        />
+                                      )}
+                                      <span>{item.oldValue}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[#94a3b8] italic">—</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3 font-mono font-bold text-[#0f172a]">
+                                  {item.newValue ? (
+                                    <div className="flex items-center gap-1.5">
+                                      {isColor && (
+                                        <span
+                                          className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0 shadow-xs"
+                                          style={{ backgroundColor: item.newValue }}
+                                        />
+                                      )}
+                                      <span className={item.status === 'added' ? 'text-[#059669]' : ''}>{item.newValue}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[#dc2626] italic">Deleted</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="py-4 text-center text-xs text-[#64748b]">
+                              No differences detected between Figma and current token database.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2918,6 +3648,119 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD VECTOR ASSET MODAL */}
+      {showAddAssetModal && (
+        <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-[#e2e8f0] rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+              <div className="flex items-center gap-2">
+                <Grid size={18} className="text-[#2563eb]" />
+                <h3 className="text-sm font-bold text-[#0f172a]">Add Vector Asset</h3>
+              </div>
+              <button onClick={() => setShowAddAssetModal(false)} className="text-[#94a3b8] hover:text-[#0f172a] text-sm">✕</button>
+            </div>
+
+            <form onSubmit={handleAddAsset} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-[#475569] block mb-1">Asset Name</label>
+                  <input
+                    type="text"
+                    value={newAssetName}
+                    onChange={(e) => setNewAssetName(e.target.value)}
+                    placeholder="e.g. Sparkles, Compass"
+                    className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-1.5 rounded-lg focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-[#475569] block mb-1">Category</label>
+                  <select
+                    value={newAssetCategory}
+                    onChange={(e) => setNewAssetCategory(e.target.value)}
+                    className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-1.5 rounded-lg focus:outline-none"
+                  >
+                    <option value="icons">Icon</option>
+                    <option value="logos">Brand Logo</option>
+                    <option value="illustrations">Illustration</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-[#475569] block mb-1">Tags (comma-separated)</label>
+                <input
+                  type="text"
+                  value={newAssetTags}
+                  onChange={(e) => setNewAssetTags(e.target.value)}
+                  placeholder="navigation, maps, direction"
+                  className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-1.5 rounded-lg focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-[#475569] block mb-1">SVG Markup Content</label>
+                <textarea
+                  rows={5}
+                  value={newAssetSvg}
+                  onChange={(e) => setNewAssetSvg(e.target.value)}
+                  placeholder="<svg ...>...</svg>"
+                  className="w-full bg-[#0f172a] text-[#f8fafc] font-mono text-[11px] p-3 rounded-lg focus:outline-none"
+                  required
+                />
+              </div>
+
+              {/* Live Preview of SVG */}
+              {newAssetSvg && (
+                <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center gap-3">
+                  <span className="text-[11px] font-semibold text-[#64748b]">Live Preview:</span>
+                  <div
+                    className="w-8 h-8 flex items-center justify-center text-[#2563eb]"
+                    dangerouslySetInnerHTML={{ __html: newAssetSvg }}
+                  />
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddAssetModal(false)}
+                  className="btn-secondary text-xs"
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={savingAsset} className="btn-primary text-xs">
+                  {savingAsset ? 'Saving...' : 'Register Asset'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* INTERACTIVE TEST MODAL */}
+      {showTestModal && (
+        <div className="fixed inset-0 bg-[#0f172a]/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+              <h3 className="text-sm font-bold text-[#0f172a]">Component Sandbox: Modal</h3>
+              <button onClick={() => setShowTestModal(false)} className="text-[#94a3b8] hover:text-[#0f172a]">✕</button>
+            </div>
+            <p className="text-xs text-[#64748b] leading-relaxed">
+              This dialog overlay uses design tokens: <code>var(--elevation-modal)</code>, <code>var(--borderRadius-lg)</code>, and focus-locking behavior.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowTestModal(false)}
+                className="btn-primary text-xs"
+              >
+                Close Dialog
+              </button>
             </div>
           </div>
         </div>

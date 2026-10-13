@@ -102,6 +102,30 @@ const SCHEMA_DDL = `
     changelog TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
   );
+
+  CREATE TABLE IF NOT EXISTS assets (
+    id TEXT PRIMARY KEY,
+    design_system_id TEXT NOT NULL REFERENCES design_systems(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'icons',
+    svg_content TEXT NOT NULL,
+    tags JSONB,
+    width INTEGER NOT NULL DEFAULT 24,
+    height INTEGER NOT NULL DEFAULT 24,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS doc_pages (
+    id TEXT PRIMARY KEY,
+    design_system_id TEXT NOT NULL REFERENCES design_systems(id) ON DELETE CASCADE,
+    slug TEXT NOT NULL,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    content TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    is_published BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  );
 `;
 
 export async function getDb(dataDir?: string) {

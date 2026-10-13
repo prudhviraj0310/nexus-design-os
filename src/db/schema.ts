@@ -91,3 +91,27 @@ export const releases = pgTable('releases', {
   changelog: text('changelog'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const assets = pgTable('assets', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  category: text('category').notNull().default('icons'), // "icons" | "logos" | "illustrations"
+  svgContent: text('svg_content').notNull(),
+  tags: jsonb('tags'),
+  width: integer('width').notNull().default(24),
+  height: integer('height').notNull().default(24),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const docPages = pgTable('doc_pages', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  slug: text('slug').notNull(),
+  title: text('title').notNull(),
+  category: text('category').notNull(), // "welcome" | "foundations" | "components" | "ai" | "automation"
+  content: text('content').notNull(), // Markdown or structured blocks
+  order: integer('order').notNull().default(0),
+  isPublished: boolean('is_published').notNull().default(true),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
