@@ -1,8 +1,43 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db/index';
 import { assets } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
 import { seedDatabase } from '@/db/seed';
+import { validateApiAuth } from '@/server/auth';
+
+/**
+ * Validates and sanitizes vector SVG markup against XSS, scripts, and malicious entities.
+ */
+function validateAndSanitizeSvg(svg: string): { valid: boolean; sanitized?: string; error?: string } {
+  if (typeof svg !== 'string') {
+    return { valid: false, error: 'SVG content must be a string.' };
+  }
+
+  const trimmed = svg.trim();
+  if (!trimmed.toLowerCase().startsWith('<svg') || !trimmed.toLowerCase().endsWith('</svg>')) {
+    return { valid: false, error: 'Malformed SVG: Must begin with <svg and end with </svg>.' };
+  }
+
+  // Dangerous element and attribute patterns
+  const forbiddenPatterns = [
+    /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
+    /<script/gi,
+    /<foreignobject/gi,
+    /javascript\s*:/gi,
+    /data\s*:\s*text\/html/gi,
+    /on\w+\s*=/gi, // Event handlers like onload=, onerror=, onclick=
+    /<iframe/gi,
+    /<object/gi,
+    /<embed/gi,
+  ];
+
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(trimmed)) {
+      return { valid: false, error: 'SVG validation failed: Unsafe markup, scripts, or event handlers detected.' };
+    }
+  }
+
+  return { valid: true, sanitized: trimmed };
+}
 
 export async function GET(request: Request) {
   try {
@@ -42,12 +77,23 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const body = await request.json();
     const { name, svgContent, category = 'icons', tags = [], width = 24, height = 24 } = body;
 
     if (!name || !svgContent) {
       return NextResponse.json(
         { success: false, error: 'Name and svgContent are required.' },
+        { status: 400 }
+      );
+    }
+
+    const validation = validateAndSanitizeSvg(svgContent);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { success: false, error: validation.error },
         { status: 400 }
       );
     }
@@ -61,7 +107,7 @@ export async function POST(request: Request) {
       designSystemId,
       name,
       category,
-      svgContent,
+      svgContent: validation.sanitized!,
       tags,
       width,
       height,

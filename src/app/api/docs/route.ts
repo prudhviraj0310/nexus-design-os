@@ -3,6 +3,7 @@ import { getDb } from '@/db/index';
 import { docPages } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { seedDatabase } from '@/db/seed';
+import { validateApiAuth } from '@/server/auth';
 
 export async function GET(request: Request) {
   try {
@@ -43,6 +44,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const body = await request.json();
     const { slug, title, category = 'foundations', content, order = 0, isPublished = true } = body;
 
@@ -94,6 +98,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) {

@@ -115,7 +115,7 @@ export class GitHubDeliveryEngine {
           noOp: true,
           pullRequestUrl: null,
           branchCreated: null,
-          commitSha: baseSha,
+          commitSha: null,
           filesCommitted: [],
           diffSummary: `All ${files.length} design token files are already up-to-date with branch "${baseBranch}". No changes detected.`,
         };
@@ -186,6 +186,9 @@ export class GitHubDeliveryEngine {
             success: false,
             dryRun: false,
             partialFailure: committedFiles.length > 0,
+            pullRequestUrl: null,
+            branchCreated: newBranchName,
+            commitSha: null,
             filesCommitted: committedFiles,
             diffSummary,
             error: `Failed to commit file "${file.filename}" (${putRes.status} ${putRes.statusText}). Remote branch "${newBranchName}" has ${committedFiles.length} of ${files.length} files committed.`,

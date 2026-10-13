@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/db/index';
 import { components } from '@/db/schema';
 import { seedDatabase } from '@/db/seed';
+import { validateApiAuth } from '@/server/auth';
 
 export async function GET() {
   try {
@@ -25,6 +26,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const body = await request.json();
     const {
       name,

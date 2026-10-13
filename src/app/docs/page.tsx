@@ -858,15 +858,28 @@ export default function NexusDocumentationPortal() {
                         placeholder="https://your-storybook.chromatic.com"
                         className="bg-[#f8fafc] border border-[#cbd5e1] px-3 py-1.5 rounded-lg text-xs w-64"
                       />
+                      <a
+                        href={storybookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1.5 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#334155] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <span>Open ↗</span>
+                      </a>
                     </div>
                   </div>
 
-                  <div className="border border-[#cbd5e1] rounded-xl overflow-hidden h-96 bg-[#0f172a] flex items-center justify-center text-white text-xs">
+                  <div className="border border-[#cbd5e1] rounded-xl overflow-hidden h-96 bg-[#0f172a] relative">
                     <iframe
                       src={storybookUrl}
                       className="w-full h-full border-0"
                       title="Storybook Sandbox"
                     />
+                  </div>
+                  <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-lg p-3 text-xs text-[#64748b] flex items-center justify-between">
+                    <span>
+                      <strong>Embedding Notice:</strong> If the Storybook view appears blank, the remote host may restrict iframe embedding via <code className="bg-white px-1 py-0.5 rounded border border-[#cbd5e1]">X-Frame-Options</code> or CSP. Click <strong>Open ↗</strong> to view directly.
+                    </span>
                   </div>
                 </div>
               ) : (
