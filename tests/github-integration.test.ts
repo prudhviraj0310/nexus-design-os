@@ -3,6 +3,15 @@ import { GET as getConnect, POST as postConnect, DELETE as deleteConnect } from 
 import { GET as getRepos } from '../src/app/api/github/repos/route';
 import { GET as getOauth } from '../src/app/api/github/oauth/route';
 
+vi.mock('../src/core/github/app', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/core/github/app')>();
+  return {
+    ...actual,
+    getGitHubInstallation: vi.fn().mockReturnValue(null),
+    clearGitHubInstallation: vi.fn(),
+  };
+});
+
 describe('GitHub Web Integration API Routes', () => {
   const originalEnv = process.env;
 

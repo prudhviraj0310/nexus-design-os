@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const allComponents = await db.select().from(components);
 
     const releaseId = `rel-${version.replace(/\./g, '-')}-${Date.now().toString(36)}`;
-    const designSystemId = 'ds-nova-design';
+    const designSystemId = body.designSystemId || 'ds-nova-design';
 
     const newRelease = {
       id: releaseId,

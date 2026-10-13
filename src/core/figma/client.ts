@@ -139,7 +139,7 @@ export class FigmaClient {
   }
 
   public async extractTokensFromFile(fileKey: string, figmaToken: string): Promise<FigmaVariablesResponse> {
-    const fileRes = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=3`, {
+    const fileRes = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=6`, {
       headers: {
         'X-Figma-Token': figmaToken,
         'User-Agent': 'NovaDesign-Platform/0.1.0',
@@ -153,9 +153,10 @@ export class FigmaClient {
     const fileData = await fileRes.json();
     const variables: Record<string, any> = {};
     const seenColors = new Map<string, { r: number; g: number; b: number; a: number; name: string }>();
+    const seenFonts = new Set<string>();
 
     function sanitizeName(name: string): string {
-      return name.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'color';
+      return name.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'token';
     }
 
     function walk(node: any) {
@@ -168,11 +169,14 @@ export class FigmaClient {
             const a = fill.opacity ?? fill.color.a ?? 1;
             const hex = `#${Math.round(r * 255).toString(16).padStart(2, '0')}${Math.round(g * 255).toString(16).padStart(2, '0')}${Math.round(b * 255).toString(16).padStart(2, '0')}`;
             if (!seenColors.has(hex)) {
-              const nodeName = sanitizeName(node.name || 'palette');
+              const nodeName = sanitizeName(node.name || 'color');
               seenColors.set(hex, { r, g, b, a, name: `color/${nodeName}` });
             }
           }
         }
+      }
+      if (node.style && node.style.fontFamily) {
+        seenFonts.add(node.style.fontFamily);
       }
       if (node.children) {
         for (const child of node.children) walk(child);
@@ -193,6 +197,22 @@ export class FigmaClient {
         resolvedType: 'COLOR',
         valuesByMode: {
           'm:canvas': { r: info.r, g: info.g, b: info.b, a: info.a },
+        },
+      };
+    }
+
+    let fontIdx = 0;
+    for (const font of seenFonts) {
+      fontIdx++;
+      const fontVarId = `var-font-${fontIdx}`;
+      variables[fontVarId] = {
+        id: fontVarId,
+        key: `key-font-${fontIdx}`,
+        name: `typography/font-${sanitizeName(font)}`,
+        variableCollectionId: 'col-canvas',
+        resolvedType: 'STRING',
+        valuesByMode: {
+          'm:canvas': font,
         },
       };
     }

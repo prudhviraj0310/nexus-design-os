@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       .insert(tokens)
       .values({
         id: tokenId,
-        designSystemId: 'ds-nova-design',
+        designSystemId,
         name: tempToken.name,
         path,
         category,
