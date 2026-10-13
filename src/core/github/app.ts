@@ -179,18 +179,11 @@ export async function getInstallationRepositories(token: string) {
   }));
 }
 
-/**
- * Generates the GitHub App Manifest JSON for 1-click app registration.
- */
 export function generateAppManifest(origin: string) {
   const randomSuffix = Math.random().toString(36).substring(2, 6);
   return {
-    name: `Nexus Design OS (${randomSuffix})`,
+    name: `nexus-design-os-${randomSuffix}`,
     url: origin,
-    hook_attributes: {
-      url: `${origin}/api/github/webhook`,
-      active: false,
-    },
     redirect_url: `${origin}/api/github/app/setup`,
     callback_urls: [`${origin}/api/github/app/callback`],
     setup_url: `${origin}/api/github/app/callback`,
