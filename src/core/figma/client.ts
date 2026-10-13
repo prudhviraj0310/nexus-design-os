@@ -49,7 +49,14 @@ export class FigmaClient {
           continue;
         }
 
-        throw new Error(`Figma API error: ${response.status} ${response.statusText}`);
+        let detail = response.statusText;
+        try {
+          const errJson = await response.json();
+          if (errJson?.message) detail = errJson.message;
+        } catch {
+          // ignore
+        }
+        throw new Error(`Figma API error (${response.status}): ${detail}`);
       } catch (err: any) {
         if (err.name === 'AbortError') {
           throw new Error(`Figma API request timed out after 10000ms for file "${fileKey}".`);
