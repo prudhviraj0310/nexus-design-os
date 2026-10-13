@@ -1,5 +1,5 @@
-import { FlatToken } from '../tokens/types.js';
-import { ExporterOptions, GeneratedFile } from './types.js';
+import { FlatToken } from '../tokens/types';
+import { ExporterOptions, GeneratedFile } from './types';
 
 export function exportToJson(tokens: FlatToken[], options: ExporterOptions = {}): GeneratedFile {
   const dtcgTree: Record<string, any> = {};

@@ -1,7 +1,7 @@
-import { getDb } from './index.js';
-import { workspaces, projects, designSystems, tokens, components } from './schema.js';
-import { parseDTCGTree } from '../core/tokens/parser.js';
-import { resolveTokenAliases } from '../core/tokens/resolver.js';
+import { getDb } from './index';
+import { workspaces, projects, designSystems, tokens, components } from './schema';
+import { parseDTCGTree } from '../core/tokens/parser';
+import { resolveTokenAliases } from '../core/tokens/resolver';
 
 export async function seedDatabase(customDb?: any) {
   const { db } = customDb ? customDb : await getDb();

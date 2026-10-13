@@ -1,4 +1,4 @@
-import { AuditFinding, AuditRule } from '../types.js';
+import { AuditFinding, AuditRule } from '../types';
 
 export const deprecatedTokensRule: AuditRule = {
   id: 'RULE-003-DEPRECATED-TOKEN',

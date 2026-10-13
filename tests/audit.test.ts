@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { AuditEngine } from '../src/core/audit/engine.js';
-import { FlatToken } from '../src/core/tokens/types.js';
+import { AuditEngine } from '../src/core/audit/engine';
+import { FlatToken } from '../src/core/tokens/types';
 
 describe('Quality Intelligence: Design System Compliance & Linter', () => {
   const mockTokens: FlatToken[] = [

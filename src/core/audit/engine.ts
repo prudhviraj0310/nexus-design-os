@@ -1,9 +1,9 @@
-import { FlatToken } from '../tokens/types.js';
-import { deprecatedTokensRule } from './rules/deprecated-tokens.js';
-import { hardcodedColorsRule } from './rules/hardcoded-colors.js';
-import { hardcodedSpacingRule } from './rules/hardcoded-spacing.js';
-import { unknownTokensRule } from './rules/unknown-tokens.js';
-import { AuditFinding, AuditReport, AuditRule } from './types.js';
+import { FlatToken } from '../tokens/types';
+import { deprecatedTokensRule } from './rules/deprecated-tokens';
+import { hardcodedColorsRule } from './rules/hardcoded-colors';
+import { hardcodedSpacingRule } from './rules/hardcoded-spacing';
+import { unknownTokensRule } from './rules/unknown-tokens';
+import { AuditFinding, AuditReport, AuditRule } from './types';
 
 export class AuditEngine {
   private rules: AuditRule[] = [

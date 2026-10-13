@@ -1,6 +1,6 @@
-import { FlatToken } from '../tokens/types.js';
-import { tokenPathToCssVar } from './css.js';
-import { ExporterOptions, GeneratedFile } from './types.js';
+import { FlatToken } from '../tokens/types';
+import { tokenPathToCssVar } from './css';
+import { ExporterOptions, GeneratedFile } from './types';
 
 export function exportToTailwind(tokens: FlatToken[], options: ExporterOptions = {}): GeneratedFile {
   const prefix = options.prefix;

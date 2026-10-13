@@ -1,5 +1,5 @@
-import { FlatToken } from '../tokens/types.js';
-import { ExporterOptions, GeneratedFile } from './types.js';
+import { FlatToken } from '../tokens/types';
+import { ExporterOptions, GeneratedFile } from './types';
 
 export function tokenPathToCssVar(path: string, prefix?: string): string {
   const cleanPath = path.replace(/\./g, '-');

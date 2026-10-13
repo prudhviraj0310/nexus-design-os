@@ -1,4 +1,4 @@
-import { AuditFinding, AuditRule } from '../types.js';
+import { AuditFinding, AuditRule } from '../types';
 
 export const unknownTokensRule: AuditRule = {
   id: 'RULE-002-UNKNOWN-TOKEN',

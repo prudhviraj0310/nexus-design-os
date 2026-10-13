@@ -1,4 +1,4 @@
-import { DTCGGroup, DTCGToken, FlatToken, TokenCategory, TokenType } from './types.js';
+import { DTCGGroup, DTCGToken, FlatToken, TokenCategory, TokenType } from './types';
 
 export function isToken(obj: any): obj is DTCGToken {
   return typeof obj === 'object' && obj !== null && '$value' in obj;

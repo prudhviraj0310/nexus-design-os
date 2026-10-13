@@ -1,4 +1,4 @@
-import { DeliveryRequest, DeliveryResult } from './types.js';
+import { DeliveryRequest, DeliveryResult } from './types';
 
 export class GitHubDeliveryEngine {
   public async deliver(request: DeliveryRequest): Promise<DeliveryResult> {

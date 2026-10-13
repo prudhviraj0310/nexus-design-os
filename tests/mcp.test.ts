@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { getDb } from '../src/db/index.js';
-import { seedDatabase } from '../src/db/seed.js';
-import { createNovaMcpServer, NOVA_TOOLS } from '../src/mcp/server.js';
+import { getDb } from '../src/db/index';
+import { seedDatabase } from '../src/db/seed';
+import { createNovaMcpServer, NOVA_TOOLS } from '../src/mcp/server';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 describe('MCP Server: Project-Scoped Tools & Context Delivery', () => {

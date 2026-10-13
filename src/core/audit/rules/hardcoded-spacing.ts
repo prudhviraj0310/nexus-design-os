@@ -1,4 +1,4 @@
-import { AuditFinding, AuditRule } from '../types.js';
+import { AuditFinding, AuditRule } from '../types';
 
 export const hardcodedSpacingRule: AuditRule = {
   id: 'RULE-004-HARDCODED-SPACING',

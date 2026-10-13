@@ -1,15 +1,15 @@
-import { getDb } from '../db/index.js';
-import { seedDatabase } from '../db/seed.js';
-import { tokens, projects } from '../db/schema.js';
+import { getDb } from '../db/index';
+import { seedDatabase } from '../db/seed';
+import { tokens, projects } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { FlatToken } from '../core/tokens/types.js';
-import { exportToCss } from '../core/exporters/css.js';
-import { exportToJson } from '../core/exporters/json.js';
-import { exportToTypeScript } from '../core/exporters/typescript.js';
-import { exportToTailwind } from '../core/exporters/tailwind.js';
-import { AuditEngine } from '../core/audit/engine.js';
-import { GitHubDeliveryEngine } from '../core/delivery/github.js';
-import { runStdioServer } from '../mcp/server.js';
+import { FlatToken } from '../core/tokens/types';
+import { exportToCss } from '../core/exporters/css';
+import { exportToJson } from '../core/exporters/json';
+import { exportToTypeScript } from '../core/exporters/typescript';
+import { exportToTailwind } from '../core/exporters/tailwind';
+import { AuditEngine } from '../core/audit/engine';
+import { GitHubDeliveryEngine } from '../core/delivery/github';
+import { runStdioServer } from '../mcp/server';
 import * as fs from 'fs';
 import * as path from 'path';
 

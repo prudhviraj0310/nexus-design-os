@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseDTCGTree } from '../src/core/tokens/parser.js';
-import { resolveTokenAliases } from '../src/core/tokens/resolver.js';
-import { validateTokens } from '../src/core/tokens/validator.js';
+import { parseDTCGTree } from '../src/core/tokens/parser';
+import { resolveTokenAliases } from '../src/core/tokens/resolver';
+import { validateTokens } from '../src/core/tokens/validator';
 
 describe('Token Engine: W3C DTCG Parsing, Resolution & Validation', () => {
   it('parses nested DTCG token trees correctly', () => {

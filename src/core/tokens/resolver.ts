@@ -1,4 +1,4 @@
-import { AliasResolutionResult, FlatToken } from './types.js';
+import { AliasResolutionResult, FlatToken } from './types';
 
 export function resolveTokenAliases(tokens: FlatToken[]): AliasResolutionResult {
   const tokenMap = new Map<string, FlatToken>();

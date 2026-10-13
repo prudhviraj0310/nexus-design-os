@@ -1,4 +1,4 @@
-import { FlatToken } from '../tokens/types.js';
+import { FlatToken } from '../tokens/types';
 
 export type Severity = 'error' | 'warning' | 'info';
 

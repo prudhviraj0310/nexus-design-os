@@ -1,4 +1,4 @@
-import { AuditFinding, AuditRule } from '../types.js';
+import { AuditFinding, AuditRule } from '../types';
 
 export const hardcodedColorsRule: AuditRule = {
   id: 'RULE-001-HARDCODED-COLOR',

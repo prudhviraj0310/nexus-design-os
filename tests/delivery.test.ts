@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { GitHubDeliveryEngine } from '../src/core/delivery/github.js';
-import { GeneratedFile } from '../src/core/exporters/types.js';
+import { GitHubDeliveryEngine } from '../src/core/delivery/github';
+import { GeneratedFile } from '../src/core/exporters/types';
 
 describe('Continuous Delivery: GitHub Engine', () => {
   const engine = new GitHubDeliveryEngine();

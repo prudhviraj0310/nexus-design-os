@@ -1,4 +1,4 @@
-import { FlatToken, TokenValidationResult } from './types.js';
+import { FlatToken, TokenValidationResult } from './types';
 
 export function validateTokens(tokens: FlatToken[]): TokenValidationResult {
   const errors: Array<{ path: string; message: string }> = [];

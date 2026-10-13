@@ -1,4 +1,4 @@
-import { GeneratedFile } from '../exporters/types.js';
+import { GeneratedFile } from '../exporters/types';
 
 export interface DeliveryRequest {
   projectId: string;

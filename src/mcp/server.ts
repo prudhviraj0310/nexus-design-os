@@ -6,14 +6,14 @@ import {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { eq, and } from 'drizzle-orm';
-import { getDb } from '../db/index.js';
-import { designSystems, tokens, components, projects, workspaces } from '../db/schema.js';
-import { AuditEngine } from '../core/audit/engine.js';
-import { FlatToken } from '../core/tokens/types.js';
-import { exportToCss } from '../core/exporters/css.js';
-import { exportToJson } from '../core/exporters/json.js';
-import { exportToTypeScript } from '../core/exporters/typescript.js';
-import { exportToTailwind } from '../core/exporters/tailwind.js';
+import { getDb } from '../db/index';
+import { designSystems, tokens, components, projects, workspaces } from '../db/schema';
+import { AuditEngine } from '../core/audit/engine';
+import { FlatToken } from '../core/tokens/types';
+import { exportToCss } from '../core/exporters/css';
+import { exportToJson } from '../core/exporters/json';
+import { exportToTypeScript } from '../core/exporters/typescript';
+import { exportToTailwind } from '../core/exporters/tailwind';
 
 const auditEngine = new AuditEngine();
 

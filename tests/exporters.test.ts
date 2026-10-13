@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { parseDTCGTree } from '../src/core/tokens/parser.js';
-import { resolveTokenAliases } from '../src/core/tokens/resolver.js';
-import { exportToCss } from '../src/core/exporters/css.js';
-import { exportToJson, exportToFlatJson } from '../src/core/exporters/json.js';
-import { exportToTypeScript } from '../src/core/exporters/typescript.js';
-import { exportToTailwind } from '../src/core/exporters/tailwind.js';
+import { parseDTCGTree } from '../src/core/tokens/parser';
+import { resolveTokenAliases } from '../src/core/tokens/resolver';
+import { exportToCss } from '../src/core/exporters/css';
+import { exportToJson, exportToFlatJson } from '../src/core/exporters/json';
+import { exportToTypeScript } from '../src/core/exporters/typescript';
+import { exportToTailwind } from '../src/core/exporters/tailwind';
 
 describe('Deterministic Exporters: CSS, JSON, TypeScript, Tailwind', () => {
   const sampleTree = {

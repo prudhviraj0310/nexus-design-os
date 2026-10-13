@@ -1,4 +1,4 @@
-import { FlatToken } from '../tokens/types.js';
+import { FlatToken } from '../tokens/types';
 
 export interface ExporterOptions {
   prefix?: string; // e.g. "nova" -> "--nova-color-brand-primary"

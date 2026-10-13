@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { getDb } from '../src/db/index.js';
-import { seedDatabase } from '../src/db/seed.js';
-import { tokens } from '../src/db/schema.js';
-import { createNovaMcpServer } from '../src/mcp/server.js';
-import { exportToCss } from '../src/core/exporters/css.js';
-import { exportToTypeScript } from '../src/core/exporters/typescript.js';
-import { AuditEngine } from '../src/core/audit/engine.js';
-import { GitHubDeliveryEngine } from '../src/core/delivery/github.js';
+import { getDb } from '../src/db/index';
+import { seedDatabase } from '../src/db/seed';
+import { tokens } from '../src/db/schema';
+import { createNovaMcpServer } from '../src/mcp/server';
+import { exportToCss } from '../src/core/exporters/css';
+import { exportToTypeScript } from '../src/core/exporters/typescript';
+import { AuditEngine } from '../src/core/audit/engine';
+import { GitHubDeliveryEngine } from '../src/core/delivery/github';
 import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { FlatToken } from '../src/core/tokens/types.js';
+import { FlatToken } from '../src/core/tokens/types';
 
 describe('End-to-End Workflow: Tokens -> MCP Context -> Code Generation -> Audit -> GitHub PR', () => {
   let dbHelper: any;
