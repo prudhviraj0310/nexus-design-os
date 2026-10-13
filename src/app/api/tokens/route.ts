@@ -5,11 +5,13 @@ import { seedDatabase } from '@/db/seed';
 import { eq } from 'drizzle-orm';
 import { validateTokens } from '@/core/tokens/validator';
 import { FlatToken } from '@/core/tokens/types';
+import { validateApiAuth } from '@/server/auth';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const dsId = searchParams.get('designSystemId') || searchParams.get('ds');
 
     const { db } = await getDb();
     let allTokens = await db.select().from(tokens);
@@ -19,9 +21,13 @@ export async function GET(request: Request) {
       allTokens = await db.select().from(tokens);
     }
 
-    const filtered = category && category !== 'all'
-      ? allTokens.filter((t: any) => t.category === category)
-      : allTokens;
+    let filtered = allTokens;
+    if (dsId) {
+      filtered = filtered.filter((t: any) => t.designSystemId === dsId);
+    }
+    if (category && category !== 'all') {
+      filtered = filtered.filter((t: any) => t.category === category);
+    }
 
     return NextResponse.json({
       success: true,
@@ -36,6 +42,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const body = await request.json();
     const {
       path,
@@ -45,6 +54,7 @@ export async function POST(request: Request) {
       rawValue,
       description,
       isDeprecated = false,
+      designSystemId = 'ds-nova-design',
     } = body;
 
     if (!path || !rawValue || !category) {
@@ -121,6 +131,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const { searchParams } = new URL(request.url);
     const tokenId = searchParams.get('id');
 

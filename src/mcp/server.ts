@@ -9,17 +9,18 @@ import { eq, and } from 'drizzle-orm';
 import { getDb } from '../db/index';
 import { designSystems, tokens, components, projects, workspaces } from '../db/schema';
 import { AuditEngine } from '../core/audit/engine';
-import { FlatToken } from '../core/tokens/types';
+import { FlatToken, TokenCategory } from '../core/tokens/types';
 import { exportToCss } from '../core/exporters/css';
 import { exportToJson } from '../core/exporters/json';
 import { exportToTypeScript } from '../core/exporters/typescript';
-import { exportToTailwind } from '../core/exporters/tailwind';
+import { exportToTailwind, exportToTailwindV4 } from '../core/exporters/tailwind';
 import { exportToSwift } from '../core/exporters/swift';
 import { exportToKotlin } from '../core/exporters/kotlin';
 import { FigmaClient } from '../core/figma/client';
 import { mapFigmaVariablesToDTCG } from '../core/figma/mapper';
 import { computeTokenDiff } from '../core/figma/diff';
 import { resolveTokenAliases } from '../core/tokens/resolver';
+import { validateTokens } from '../core/tokens/validator';
 
 const auditEngine = new AuditEngine();
 
@@ -99,7 +100,7 @@ export const NOVA_TOOLS: Tool[] = [
         projectId: { type: 'string', description: 'The project ID' },
         format: {
           type: 'string',
-          enum: ['css', 'json', 'typescript', 'tailwind', 'swift', 'kotlin'],
+          enum: ['css', 'json', 'typescript', 'tailwind', 'tailwind4', 'tailwind-v4', 'swift', 'kotlin'],
           description: 'Target export format',
         },
         prefix: { type: 'string', description: 'Optional prefix for token variables' },
@@ -378,6 +379,10 @@ export function createNovaMcpServer(dbHelper?: any) {
           case 'tailwind':
             generated = exportToTailwind(flatTokens, { prefix });
             break;
+          case 'tailwind4':
+          case 'tailwind-v4':
+            generated = exportToTailwindV4(flatTokens, { prefix });
+            break;
           case 'swift':
             generated = exportToSwift(flatTokens, { prefix });
             break;
@@ -447,8 +452,50 @@ export function createNovaMcpServer(dbHelper?: any) {
         const category = args?.category as string;
         const description = args?.description as string | undefined;
 
+        if (!tokenPath || !rawValue || !category) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: 'Missing required parameters: tokenPath, rawValue, and category are required.' }],
+          };
+        }
+
         const isAlias = rawValue.startsWith('{') && rawValue.endsWith('}');
         const aliasTarget = isAlias ? rawValue.slice(1, -1).trim() : null;
+
+        // Validate token format before mutating database
+        const validation = validateTokens([
+          {
+            name: tokenPath.split('.').pop() || tokenPath,
+            path: tokenPath,
+            category: category as TokenCategory,
+            type: category === 'color' ? 'color' : 'dimension',
+            rawValue,
+            resolvedValue: rawValue,
+            isAlias,
+            aliasTarget: aliasTarget || undefined,
+            isDeprecated: false,
+          },
+        ]);
+
+        if (!validation.valid) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    success: false,
+                    error: 'Token validation failed',
+                    errors: validation.errors,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
 
         const tokenId = `tok-${tokenPath.replace(/\./g, '-')}`;
         await db

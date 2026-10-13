@@ -2,8 +2,9 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Supernova | Agentic Design System Platform',
-  description: 'Enterprise design system management, Figma variables sync, W3C DTCG tokens, multi-platform code generation, and Model Context Protocol (MCP) distribution.',
+  title: 'Nexus Design OS | Enterprise Design Token Engine & MCP Platform',
+  description:
+    'Autonomous design system platform: Figma variables synchronization, W3C DTCG tokens, multi-platform code generation, AST compliance, and Model Context Protocol (MCP) distribution.',
   icons: {
     icon: '/icon.png',
     apple: '/apple-icon.png',

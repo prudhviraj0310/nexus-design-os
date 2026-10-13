@@ -200,8 +200,14 @@ export function PrimaryCard() {
   const [mcpPingResult, setMcpPingResult] = useState<any>(null);
   const [testingMcp, setTestingMcp] = useState<boolean>(false);
 
-  // Copy helper
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [mcpEndpointUrl, setMcpEndpointUrl] = useState<string>('http://localhost:3000/api/mcp');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setMcpEndpointUrl(`${window.location.origin}/api/mcp`);
+    }
+  }, []);
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -344,8 +350,11 @@ export function PrimaryCard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileKey: figmaFileKey,
+          figmaToken: figmaToken,
           personalAccessToken: figmaToken,
+          modeName: figmaMode,
           mode: figmaMode,
+          applyChanges: true,
         }),
       });
       const data = await res.json();
@@ -365,13 +374,18 @@ export function PrimaryCard() {
     setDelivering(true);
     setDeliveryResult(null);
     try {
+      const [owner, name] = targetRepo.includes('/') ? targetRepo.split('/') : ['acme-corp', targetRepo];
       const res = await fetch('/api/deliver', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           repository: targetRepo,
+          repoOwner: owner.trim(),
+          repoName: (name || targetRepo).trim(),
           branch: targetBranch,
+          newBranchName: targetBranch,
           title: prTitle,
+          prTitle: prTitle,
         }),
       });
       const data = await res.json();
@@ -461,19 +475,19 @@ export function PrimaryCard() {
   // 9. Download SKILL.md Export
   const handleDownloadSkill = () => {
     const skillContent = `---
-name: supernova-design-system
-description: Authoritative 2026 design system tokens, components, guidelines, and style rules from Supernova Studio.
+name: nexus-design-os
+description: Authoritative design system tokens, components, guidelines, and style rules from Nexus Design OS.
 ---
 
-# Supernova Design System: My Design System
+# Nexus Design OS: Design System Context
 
 Exported for AI Coding Agents (Claude Code, Cursor, Codex, Windsurf).
-Endpoint: \`https://mcp.supernova.io/mcp/c/350527-my-design-system\`
+Endpoint: \`${mcpEndpointUrl}\`
 
 ## Included Data & Knowledge
-- **Design Tokens**: 42 active tokens (colors, dimensions, typography, shadows)
+- **Design Tokens**: Active tokens (colors, dimensions, typography, shadows)
 - **Token Themes**: Light and Dark modes
-- **Components**: 8 core components (Button, Input, Card, Badge, Modal, Tabs, Tooltip, Switch)
+- **Components**: Core components (Button, Input, Card, Badge, Modal, Tabs, Tooltip, Switch)
 - **Documentation**: Getting Started, Color Palette, Typography scale, Spacing scale, Component guidelines
 
 ## Key Design Tokens
@@ -488,7 +502,7 @@ Endpoint: \`https://mcp.supernova.io/mcp/c/350527-my-design-system\`
 ## Enforcement Rules
 1. Never hardcode hex colors (#3b82f6, #10b981). Always reference CSS custom properties: \`var(--color-brand-primary)\`.
 2. Follow 4px/8px modular grid spacing. Never invent arbitrary pixel values like \`17px\` or \`23px\`.
-3. Use the Supernova MCP endpoint for live token queries and automated feedback submission.
+3. Use the Nexus MCP endpoint for live token queries and automated feedback submission.
 `;
     triggerDownload('SKILL.md', skillContent, 'text/markdown');
   };
@@ -497,16 +511,16 @@ Endpoint: \`https://mcp.supernova.io/mcp/c/350527-my-design-system\`
   const handleDownloadClaudePlugin = () => {
     const pluginContent = JSON.stringify(
       {
-        name: 'supernova-design-system-plugin',
-        version: '1.3.0',
-        description: 'Supernova agentic design context plugin for Claude Code',
+        name: 'nexus-design-os-plugin',
+        version: '1.0.0',
+        description: 'Nexus Design OS agentic design context plugin for Claude Code',
         mcpServers: {
-          supernova: {
-            url: 'https://mcp.supernova.io/mcp/c/350527-my-design-system',
-            transport: 'sse',
+          nexus: {
+            url: mcpEndpointUrl,
+            transport: 'http',
           },
         },
-        skills: ['./skills/supernova-design-system'],
+        skills: ['./skills/nexus-design-os'],
         telemetry: {
           feedbackEnabled: collectFeedback,
         },
@@ -1393,16 +1407,11 @@ Endpoint: \`https://mcp.supernova.io/mcp/c/350527-my-design-system\`
                         <input
                           type="text"
                           readOnly
-                          value="https://mcp.supernova.io/mcp/c/350527-my-design-system"
+                          value={mcpEndpointUrl}
                           className="flex-1 bg-[#f8fafc] border border-[#cbd5e1] px-2.5 py-1.5 rounded-md text-xs font-mono text-[#0f172a] select-all focus:outline-none"
                         />
                         <button
-                          onClick={() =>
-                            copyToClipboard(
-                              'https://mcp.supernova.io/mcp/c/350527-my-design-system',
-                              'mcp_url'
-                            )
-                          }
+                          onClick={() => copyToClipboard(mcpEndpointUrl, 'mcp_url')}
                           className="btn-secondary text-xs px-2.5"
                         >
                           {copiedKey === 'mcp_url' ? <Check size={14} className="text-[#10b981]" /> : <Copy size={14} />}

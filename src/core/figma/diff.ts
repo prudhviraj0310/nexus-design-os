@@ -38,5 +38,21 @@ export function computeTokenDiff(existingTokens: FlatToken[], incomingTokens: Fl
     }
   }
 
+  // Detect removed tokens (tokens existing in categories represented by incoming tokens, but missing from incoming)
+  const incomingCategories = new Set(incomingTokens.map((t) => t.category));
+  const incomingPaths = new Set(incomingTokens.map((t) => t.path));
+
+  for (const [path, existing] of existingMap.entries()) {
+    if (!incomingPaths.has(path) && incomingCategories.has(existing.category)) {
+      diffItems.push({
+        path,
+        status: 'removed',
+        oldValue: existing.rawValue,
+        newValue: undefined,
+        category: existing.category,
+      });
+    }
+  }
+
   return diffItems;
 }

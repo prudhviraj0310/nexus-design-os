@@ -5,6 +5,8 @@ import { hardcodedSpacingRule } from './rules/hardcoded-spacing';
 import { unknownTokensRule } from './rules/unknown-tokens';
 import { AuditFinding, AuditReport, AuditRule } from './types';
 
+import { runBabelAstAudit } from './ast';
+
 export class AuditEngine {
   private rules: AuditRule[] = [
     hardcodedColorsRule,
@@ -24,9 +26,24 @@ export class AuditEngine {
   }): AuditReport {
     const findings: AuditFinding[] = [];
 
+    // 1. Run real Babel AST traversal for JS/TS/JSX/TSX
+    const astResult = runBabelAstAudit(context);
+    if (astResult.success && astResult.findings.length > 0) {
+      findings.push(...astResult.findings);
+    }
+
+    // 2. Run regex/text-based rules for remaining patterns or non-JS files
     for (const rule of this.rules) {
       const result = rule.evaluate(context);
-      findings.push(...result);
+      for (const f of result) {
+        // Deduplicate against AST findings on the same line and rule
+        const alreadyFlagged = findings.some(
+          (existing) => existing.ruleId === f.ruleId && existing.line === f.line
+        );
+        if (!alreadyFlagged) {
+          findings.push(f);
+        }
+      }
     }
 
     const errorCount = findings.filter((f) => f.severity === 'error').length;

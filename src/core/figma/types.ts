@@ -39,9 +39,9 @@ export interface FigmaSyncRequest {
 
 export interface TokenDiffItem {
   path: string;
-  status: 'added' | 'modified' | 'unchanged' | 'conflict';
+  status: 'added' | 'modified' | 'unchanged' | 'conflict' | 'removed';
   oldValue?: string;
-  newValue: string;
+  newValue?: string;
   category: string;
 }
 

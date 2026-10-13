@@ -67,10 +67,17 @@ export function loadEnv(): { env: Env; issues: string[] } {
 
 export const env = (): Env => loadEnv().env;
 
-/** Authentication is enforced whenever an admin password is configured, and always in production. */
+/** Authentication is enforced whenever an admin password or API key is configured, or in production. */
 export function isAuthEnabled(): boolean {
   const e = env();
-  return e.NODE_ENV === 'production' || Boolean(e.NOVA_ADMIN_PASSWORD);
+  return (
+    e.NODE_ENV === 'production' ||
+    Boolean(e.NOVA_ADMIN_PASSWORD) ||
+    Boolean(e.NOVA_API_KEY) ||
+    Boolean(process.env.NEXUS_API_KEY) ||
+    Boolean(process.env.NOVA_API_KEY) ||
+    process.env.AUTH_REQUIRED === 'true'
+  );
 }
 
 /** Test helper: forget cached configuration. */

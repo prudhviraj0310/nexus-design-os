@@ -55,13 +55,13 @@ Pure white enterprise documentation portal with official Contexts 101 guide, liv
 - 🎨 **Figma Variable & Token Synchronization:** Universal W3C Design Tokens Community Group (DTCG) specification engine supporting deep alias resolution chains (e.g., `{color.primitive.blue.500}` $\to$ `#3b82f6`) with automated cycle detection.
 - 🤖 **Native Model Context Protocol (MCP) Server:** High-performance JSON-RPC 2.0 server exposing 8 production tools (`get_tokens`, `get_token`, `check_compliance`, `generate_code`, `list_components`, `import_figma_variables`, `propose_token_changes`, `get_design_system`).
 - 📱 **Multi-Platform Code Exporters:** Deterministic, type-safe generation for:
-  - **Tailwind CSS v4** (`tailwind.tokens.js`)
+  - **Tailwind CSS v4** (`tailwind.theme.css` with `@theme` directives & `tailwind.tokens.js`)
   - **CSS Custom Properties** (`tokens.css` with `:root` variables)
   - **TypeScript & React** (`tokens.ts` with strongly typed const maps)
   - **Style Dictionary JSON** (`tokens.json` DTCG tree)
   - **iOS SwiftUI** (`Tokens.swift` with `Color(hex:)` extensions)
   - **Android Jetpack Compose** (`Tokens.kt` with `Color(0xFF...)` values)
-- 🔍 **Babel AST Quality Intelligence Linter:** Evaluates JSX/TSX Abstract Syntax Trees to flag hardcoded hex codes, un-tokenized spacing, and deprecated tokens—automatically suggesting replacement token variables.
+- 🔍 **Babel AST Quality Intelligence Linter:** Evaluates JSX/TSX Abstract Syntax Trees using `@babel/parser` and `@babel/traverse` to flag hardcoded hex codes, un-tokenized spacing, and deprecated tokens—automatically suggesting replacement token variables.
 - 🚀 **Continuous Delivery GitHub Pipeline:** Automatically generates Git branches (`nexus/sync-*`), stages diff summaries, commits token updates, and opens GitHub Pull Requests.
 - ⚡ **Zero-Dependency Embedded Database:** Powered by embedded WASM PostgreSQL (`PGlite`) with Drizzle ORM—runs locally or in containers without requiring an external database cluster.
 
@@ -142,7 +142,7 @@ Open [http://localhost:3000](http://localhost:3000) for the **Nexus Studio Platf
 ```bash
 npm test
 ```
-Executes all 30 automated tests across token resolvers, exporters, AST linters, MCP servers, and delivery engines.
+Executes all 34 automated tests across token resolvers, exporters, Babel AST linters, MCP servers, and delivery engines.
 
 ---
 

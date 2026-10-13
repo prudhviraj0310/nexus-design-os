@@ -5,12 +5,15 @@ import { seedDatabase } from '../src/db/seed';
 import { eq } from 'drizzle-orm';
 
 describe('Design System Releases & Version Publishing', () => {
+  let dbHelper: any;
+
   beforeAll(async () => {
-    await seedDatabase();
+    dbHelper = await getDb(':memory:');
+    await seedDatabase(dbHelper);
   });
 
   it('contains seeded release records', async () => {
-    const { db } = await getDb();
+    const { db } = dbHelper;
     const allReleases = await db.select().from(releases);
     expect(allReleases.length).toBeGreaterThanOrEqual(2);
 
@@ -20,7 +23,7 @@ describe('Design System Releases & Version Publishing', () => {
   });
 
   it('can publish a new release snapshot and update system version', async () => {
-    const { db } = await getDb();
+    const { db } = dbHelper;
     const newVersion = `1.4.0-${Date.now()}`;
     const releaseId = `rel-${newVersion}`;
 

@@ -10,13 +10,11 @@ import { FlatToken } from '@/core/tokens/types';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      fileKey = 'figma-sample-file-key',
-      figmaToken,
-      modeName = 'Light',
-      applyChanges = false,
-      dryRun = false,
-    } = body;
+    const fileKey = body.fileKey || 'figma-sample-file-key';
+    const figmaToken = body.figmaToken || body.personalAccessToken || process.env.FIGMA_TOKEN;
+    const modeName = body.modeName || body.mode || 'Light';
+    const applyChanges = body.applyChanges !== undefined ? Boolean(body.applyChanges) : true;
+    const dryRun = Boolean(body.dryRun);
 
     const client = new FigmaClient();
     const rawFigmaPayload = await client.getVariables({
@@ -27,7 +25,7 @@ export async function POST(request: Request) {
     });
 
     const mappedTokens = mapFigmaVariablesToDTCG(rawFigmaPayload, modeName);
-    const { tokens: resolvedIncoming } = resolveTokenAliases(mappedTokens);
+    const { tokens: resolvedIncoming, cycles, unresolvedAliases } = resolveTokenAliases(mappedTokens);
 
     const { db } = await getDb();
     const existingDbTokens = await db.select().from(tokens);
@@ -86,6 +84,8 @@ export async function POST(request: Request) {
       diff,
       applied: applyChanges,
       appliedCount,
+      cycles: cycles || [],
+      unresolvedAliases: unresolvedAliases || [],
     });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

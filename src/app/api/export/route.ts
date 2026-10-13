@@ -5,7 +5,7 @@ import { FlatToken } from '@/core/tokens/types';
 import { exportToCss } from '@/core/exporters/css';
 import { exportToJson } from '@/core/exporters/json';
 import { exportToTypeScript } from '@/core/exporters/typescript';
-import { exportToTailwind } from '@/core/exporters/tailwind';
+import { exportToTailwind, exportToTailwindV4 } from '@/core/exporters/tailwind';
 import { exportToSwift } from '@/core/exporters/swift';
 import { exportToKotlin } from '@/core/exporters/kotlin';
 
@@ -36,13 +36,15 @@ export async function GET(request: Request) {
     const json = exportToJson(flatTokens);
     const ts = exportToTypeScript(flatTokens);
     const tw = exportToTailwind(flatTokens, { prefix });
+    const tw4 = exportToTailwindV4(flatTokens, { prefix });
     const swift = exportToSwift(flatTokens);
     const kotlin = exportToKotlin(flatTokens);
 
     if (format === 'css') return NextResponse.json(css);
     if (format === 'json') return NextResponse.json(json);
     if (format === 'typescript') return NextResponse.json(ts);
-    if (format === 'tailwind') return NextResponse.json(tw);
+    if (format === 'tailwind' || format === 'tailwind-v3') return NextResponse.json(tw);
+    if (format === 'tailwind4' || format === 'tailwind-v4') return NextResponse.json(tw4);
     if (format === 'swift') return NextResponse.json(swift);
     if (format === 'kotlin') return NextResponse.json(kotlin);
 
@@ -53,6 +55,7 @@ export async function GET(request: Request) {
         json,
         typescript: ts,
         tailwind: tw,
+        tailwindV4: tw4,
         swift,
         kotlin,
       },
