@@ -110,6 +110,18 @@ export async function initializeSchema(client: PGlite) {
       diff_summary TEXT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS releases (
+      id TEXT PRIMARY KEY,
+      design_system_id TEXT NOT NULL REFERENCES design_systems(id) ON DELETE CASCADE,
+      version TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      tokens_count INTEGER NOT NULL DEFAULT 0,
+      components_count INTEGER NOT NULL DEFAULT 0,
+      changelog TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
   `);
 }
 

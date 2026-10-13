@@ -30,6 +30,11 @@ import {
   Sliders,
   Play,
   PenTool,
+  History,
+  Tag,
+  Wand2,
+  Eye,
+  Code2,
 } from 'lucide-react';
 
 function FigmaIcon({ size = 18, color = '#06b6d4', style }: { size?: number; color?: string; style?: React.CSSProperties }) {
@@ -45,16 +50,20 @@ function FigmaIcon({ size = 18, color = '#06b6d4', style }: { size?: number; col
 }
 
 export default function NovaDesignApp() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tokens' | 'components' | 'audit' | 'exporter' | 'mcp' | 'delivery' | 'docs'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tokens' | 'components' | 'audit' | 'exporter' | 'mcp' | 'delivery' | 'releases' | 'docs'>('dashboard');
 
   // Theme mode
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>('dark');
+
+  // Brand mode
+  const [activeBrand, setActiveBrand] = useState<'Core Web' | 'Mobile App' | 'Enterprise'>('Core Web');
 
   // Token state
   const [tokens, setTokens] = useState<any[]>([]);
   const [tokenCategory, setTokenCategory] = useState<string>('all');
   const [tokenSearch, setTokenSearch] = useState<string>('');
   const [loadingTokens, setLoadingTokens] = useState<boolean>(true);
+  const [selectedToken, setSelectedToken] = useState<any | null>(null);
 
   // Add Token Modal state
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -77,9 +86,15 @@ export default function NovaDesignApp() {
   const [selectedComponent, setSelectedComponent] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>('primary');
   const [selectedSize, setSelectedSize] = useState<string>('md');
+  const [componentFramework, setComponentFramework] = useState<'react' | 'html' | 'swift' | 'kotlin'>('react');
+  const [buttonClickCount, setButtonClickCount] = useState<number>(0);
+  const [inputVal, setInputVal] = useState<string>('hello@acme.corp');
+  const [badgeTone, setBadgeTone] = useState<'neutral' | 'success' | 'critical' | 'indigo'>('success');
+  const [cardVariant, setCardVariant] = useState<'elevated' | 'outlined' | 'ghost'>('elevated');
+  const [cardPadding, setCardPadding] = useState<'sm' | 'md' | 'lg'>('md');
 
   // Audit state
-  const [auditCode, setAuditCode] = useState<string>(`// Paste or write UI code to test compliance against design tokens
+  const [auditCode, setAuditCode] = useState<string>(`// UI Component under compliance evaluation
 export function PrimaryCard() {
   return (
     <div style={{
@@ -101,6 +116,14 @@ export function PrimaryCard() {
   const [exportedContent, setExportedContent] = useState<any>(null);
   const [loadingExport, setLoadingExport] = useState<boolean>(false);
 
+  // Releases state
+  const [releasesList, setReleasesList] = useState<any[]>([]);
+  const [showReleaseModal, setShowReleaseModal] = useState<boolean>(false);
+  const [newReleaseVersion, setNewReleaseVersion] = useState<string>('1.4.0');
+  const [newReleaseTitle, setNewReleaseTitle] = useState<string>('Typography Scale & Mobile Sync');
+  const [newReleaseChangelog, setNewReleaseChangelog] = useState<string>('• Refined typography scale\n• Updated iOS SwiftUI and Android Kotlin color mappings\n• Enhanced component token dependencies');
+  const [publishingRelease, setPublishingRelease] = useState<boolean>(false);
+
   // MCP state
   const [mcpTool, setMcpTool] = useState<string>('get_tokens');
   const [mcpCustomArg, setMcpCustomArg] = useState<string>('{"category": "color"}');
@@ -118,6 +141,7 @@ export function PrimaryCard() {
   useEffect(() => {
     fetchTokens();
     fetchComponents();
+    fetchReleases();
   }, []);
 
   const fetchTokens = async () => {
@@ -127,6 +151,10 @@ export function PrimaryCard() {
       const data = await res.json();
       if (data.tokens) {
         setTokens(data.tokens);
+        if (data.tokens.length > 0 && !selectedToken) {
+          const brandPrimary = data.tokens.find((t: any) => t.path === 'color.brand.primary') || data.tokens[0];
+          setSelectedToken(brandPrimary);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch tokens', err);
@@ -147,6 +175,18 @@ export function PrimaryCard() {
       }
     } catch (err) {
       console.error('Failed to fetch components', err);
+    }
+  };
+
+  const fetchReleases = async () => {
+    try {
+      const res = await fetch('/api/releases');
+      const data = await res.json();
+      if (data.releases) {
+        setReleasesList(data.releases);
+      }
+    } catch (err) {
+      console.error('Failed to fetch releases', err);
     }
   };
 
@@ -187,9 +227,41 @@ export function PrimaryCard() {
       const data = await res.json();
       if (data.success) {
         setTokens((prev) => prev.filter((t) => t.id !== id));
+        if (selectedToken?.id === id) {
+          setSelectedToken(null);
+        }
       }
     } catch (err) {
       console.error('Failed to delete token', err);
+    }
+  };
+
+  // Publish release snapshot
+  const handlePublishRelease = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPublishingRelease(true);
+    try {
+      const res = await fetch('/api/releases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          version: newReleaseVersion,
+          title: newReleaseTitle,
+          changelog: newReleaseChangelog,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowReleaseModal(false);
+        await fetchReleases();
+        alert(`Version release v${newReleaseVersion} published successfully!`);
+      } else {
+        alert(data.error || 'Failed to publish release');
+      }
+    } catch (err) {
+      console.error('Failed to publish release', err);
+    } finally {
+      setPublishingRelease(false);
     }
   };
 
@@ -225,13 +297,14 @@ export function PrimaryCard() {
   };
 
   // Run audit
-  const runAudit = async () => {
+  const runAudit = async (customCode?: string) => {
     setAuditing(true);
+    const codeToTest = customCode !== undefined ? customCode : auditCode;
     try {
       const res = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codeContent: auditCode, filePath: 'src/Card.tsx' }),
+        body: JSON.stringify({ codeContent: codeToTest, filePath: 'src/Card.tsx' }),
       });
       const data = await res.json();
       if (data.report) {
@@ -242,6 +315,22 @@ export function PrimaryCard() {
     } finally {
       setAuditing(false);
     }
+  };
+
+  // 1-Click auto-fix remediation
+  const handleApplyFix = (ruleId: string, fixText: string) => {
+    let updated = auditCode;
+    if (ruleId === 'no-hardcoded-colors') {
+      updated = updated.replace(/#3b82f6/g, 'var(--color-brand-primary)');
+    } else if (ruleId === 'spacing-scale-only') {
+      updated = updated.replace(/'17px'/g, "'var(--space-md)'");
+    } else if (ruleId === 'no-unregistered-tokens') {
+      updated = updated.replace(/var\(--color-unknown-fake\)/g, 'var(--color-text-primary)');
+    } else if (ruleId === 'no-deprecated-tokens') {
+      updated = updated.replace(/var\(--color-legacy-accent\)/g, 'var(--color-brand-primary)');
+    }
+    setAuditCode(updated);
+    runAudit(updated);
   };
 
   // Load exported files
@@ -257,6 +346,18 @@ export function PrimaryCard() {
     } finally {
       setLoadingExport(false);
     }
+  };
+
+  // Download exported file
+  const handleDownloadExport = () => {
+    if (!exportedContent?.content) return;
+    const blob = new Blob([exportedContent.content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = exportedContent.filename || `tokens.${exportFormat}`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
@@ -331,6 +432,8 @@ export function PrimaryCard() {
   });
 
   const categories = ['all', 'color', 'spacing', 'borderRadius', 'typography'];
+
+  const activeRelease = releasesList[0] || { version: '1.3.0', title: 'Core Tokens' };
 
   return (
     <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
@@ -469,6 +572,29 @@ export function PrimaryCard() {
           Code Exporters
         </button>
 
+        <button
+          onClick={() => setActiveTab('releases')}
+          className="glass-card-interactive"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            color: activeTab === 'releases' ? '#fff' : 'var(--text-secondary)',
+            background: activeTab === 'releases' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+            borderColor: activeTab === 'releases' ? 'var(--border-accent)' : 'transparent',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            fontWeight: 600,
+            fontSize: '14px',
+            textAlign: 'left',
+          }}
+        >
+          <History size={18} color={activeTab === 'releases' ? '#a5b4fc' : '#94a3b8'} />
+          Releases & Versions
+        </button>
+
         <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '16px 12px 8px' }}>
           Integrations & Git
         </div>
@@ -564,17 +690,105 @@ export function PrimaryCard() {
           <BookOpen size={18} color={activeTab === 'docs' ? '#a5b4fc' : '#94a3b8'} />
           Documentation Studio
         </button>
+
+        {/* Brand Switcher at Bottom */}
+        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>
+            ACTIVE BRAND / THEME
+          </div>
+          <select
+            value={activeBrand}
+            onChange={(e: any) => setActiveBrand(e.target.value)}
+            style={{
+              width: '100%',
+              background: '#090d16',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
+              padding: '6px 8px',
+              color: '#fff',
+              fontSize: '12px',
+              outline: 'none',
+            }}
+          >
+            <option value="Core Web">Core Web (Acme)</option>
+            <option value="Mobile App">Mobile App (iOS/Android)</option>
+            <option value="Enterprise">Enterprise Dark</option>
+          </select>
+        </div>
       </aside>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, padding: '32px 40px', overflowY: 'auto' }}>
+      <div style={{ flex: 1, padding: '28px 36px', overflowY: 'auto' }}>
+        {/* SUPERNOVA GUIDED JOURNEY STEPPER */}
+        <div
+          className="glass-panel"
+          style={{
+            padding: '12px 18px',
+            marginBottom: '28px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            overflowX: 'auto',
+            background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
+          }}
+        >
+          {[
+            { id: 'figma', label: '1. Ingest (Figma)', sub: 'Sync & Diff', action: () => setShowFigmaModal(true), isFigma: true },
+            { id: 'tokens', label: '2. Tokens Studio', sub: 'DTCG & Aliases', tab: 'tokens' },
+            { id: 'components', label: '3. Components', sub: 'Props Sandbox', tab: 'components' },
+            { id: 'exporter', label: '4. Exporters', sub: 'Web, iOS, Android', tab: 'exporter' },
+            { id: 'audit', label: '5. Quality Linter', sub: 'SARIF Scanner', tab: 'audit' },
+            { id: 'delivery', label: '6. GitHub PR', sub: 'Automated CI/CD', tab: 'delivery' },
+            { id: 'releases', label: '7. Releases', sub: `v${activeRelease.version}`, tab: 'releases' },
+            { id: 'docs', label: '8. Living Docs', sub: 'Styleguide Portal', tab: 'docs' },
+            { id: 'mcp', label: '9. AI Agent', sub: 'MCP Protocol', tab: 'mcp' },
+          ].map((step, idx) => {
+            const isActive = step.tab ? activeTab === step.tab : false;
+            return (
+              <React.Fragment key={idx}>
+                <button
+                  onClick={() => {
+                    if (step.action) step.action();
+                    else if (step.tab) setActiveTab(step.tab as any);
+                  }}
+                  style={{
+                    background: isActive ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid',
+                    borderColor: isActive ? '#6366f1' : 'var(--border-subtle)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    cursor: 'pointer',
+                    minWidth: '110px',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: isActive ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {step.isFigma && <FigmaIcon size={12} />}
+                    {step.label}
+                  </span>
+                  <span style={{ fontSize: '10px', color: isActive ? '#a5b4fc' : 'var(--text-muted)' }}>
+                    {step.sub}
+                  </span>
+                </button>
+                {idx < 8 && <ChevronRight size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
         {/* TAB 1: DASHBOARD OVERVIEW */}
         {activeTab === 'dashboard' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
               <div>
                 <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-                  Platform Central Overview
+                  NovaDesign Central Overview
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
                   Unified source of truth connecting Figma Variables, W3C DTCG tokens, components, AI agents via MCP, and GitHub delivery.
@@ -582,6 +796,9 @@ export function PrimaryCard() {
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={() => setShowReleaseModal(true)} className="btn-secondary" style={{ color: '#a5b4fc', borderColor: 'rgba(99, 102, 241, 0.3)' }}>
+                  <Tag size={14} /> Publish Release (v{activeRelease.version})
+                </button>
                 <button onClick={() => setShowFigmaModal(true)} className="btn-secondary" style={{ color: '#06b6d4', borderColor: 'rgba(6, 182, 212, 0.3)' }}>
                   <FigmaIcon size={14} /> Sync Figma Variables
                 </button>
@@ -611,7 +828,7 @@ export function PrimaryCard() {
                 </div>
                 <div style={{ fontSize: '32px', fontWeight: 800, color: '#fff' }}>{components.length}</div>
                 <div style={{ fontSize: '12px', color: '#a5b4fc', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
-                  <Sparkles size={13} /> React + TypeScript Types
+                  <Sparkles size={13} /> Multi-Framework Specs
                 </div>
               </div>
 
@@ -628,12 +845,12 @@ export function PrimaryCard() {
 
               <div className="glass-panel" style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '12px', fontSize: '13px' }}>
-                  <span>MCP PROTOCOL TOOLS</span>
-                  <Bot size={16} color="#10b981" />
+                  <span>ACTIVE RELEASE</span>
+                  <Tag size={16} color="#10b981" />
                 </div>
-                <div style={{ fontSize: '32px', fontWeight: 800, color: '#fff' }}>8</div>
+                <div style={{ fontSize: '32px', fontWeight: 800, color: '#fff' }}>v{activeRelease.version}</div>
                 <div style={{ fontSize: '12px', color: '#a5b4fc', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
-                  <Zap size={13} /> Includes Figma & Proposal Tools
+                  <History size={13} /> {releasesList.length} Versions Recorded
                 </div>
               </div>
             </div>
@@ -644,31 +861,31 @@ export function PrimaryCard() {
                 <Terminal size={18} color="#6366f1" /> The Continuous Delivery Pipeline (Figma ⇄ Code)
               </h2>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '150px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '140px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>STEP 1: DESIGN</div>
                   <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px', color: '#06b6d4' }}>Figma Variables</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Live Sync & Conflict Diff</div>
                 </div>
                 <ChevronRight size={18} color="var(--text-muted)" />
-                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '150px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '140px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>STEP 2: ENGINE</div>
                   <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>W3C DTCG Store</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Alias Resolution & Modes</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Alias Resolution & Graph</div>
                 </div>
                 <ChevronRight size={18} color="var(--text-muted)" />
-                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '150px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '140px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>STEP 3: EXPORTERS</div>
                   <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>Multi-Platform</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>CSS, TS, Swift, Kotlin</div>
                 </div>
                 <ChevronRight size={18} color="var(--text-muted)" />
-                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '150px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '140px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>STEP 4: AGENTS</div>
                   <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>MCP Protocol</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Claude Code & Cursor</div>
                 </div>
                 <ChevronRight size={18} color="var(--text-muted)" />
-                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '150px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flex: 1, minWidth: '140px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>STEP 5: GIT PR</div>
                   <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>GitHub Delivery</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Automated Release PR</div>
@@ -677,7 +894,7 @@ export function PrimaryCard() {
             </div>
 
             {/* Quick Actions Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '32px' }}>
               <div onClick={() => setShowFigmaModal(true)} className="glass-card-interactive" style={{ padding: '24px' }}>
                 <FigmaIcon size={24} color="#06b6d4" style={{ marginBottom: '12px' }} />
                 <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Sync from Figma</h3>
@@ -705,7 +922,7 @@ export function PrimaryCard() {
           </div>
         )}
 
-        {/* TAB 2: DESIGN TOKENS STUDIO */}
+        {/* TAB 2: DESIGN TOKENS STUDIO & ALIAS GRAPH */}
         {activeTab === 'tokens' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -714,7 +931,7 @@ export function PrimaryCard() {
                   Design Tokens Studio
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-                  W3C DTCG standard tokens with automatic alias resolution, category taxonomy, and live editing.
+                  W3C DTCG standard tokens with automatic alias resolution, category taxonomy, and live graph visualizer.
                 </p>
               </div>
 
@@ -771,138 +988,296 @@ export function PrimaryCard() {
               ))}
             </div>
 
-            {/* Tokens Table */}
-            <div className="glass-panel" style={{ overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '14px 20px', fontWeight: 600 }}>TOKEN PATH</th>
-                    <th style={{ padding: '14px 20px', fontWeight: 600 }}>PREVIEW</th>
-                    <th style={{ padding: '14px 20px', fontWeight: 600 }}>RESOLVED VALUE</th>
-                    <th style={{ padding: '14px 20px', fontWeight: 600 }}>RAW / ALIAS</th>
-                    <th style={{ padding: '14px 20px', fontWeight: 600 }}>CATEGORY</th>
-                    <th style={{ padding: '14px 20px', fontWeight: 600, textAlign: 'right' }}>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTokens.map((t) => (
-                    <tr key={t.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.15s' }}>
-                      <td style={{ padding: '14px 20px', fontWeight: 600 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className="font-mono" style={{ color: '#fff' }}>{t.path}</span>
-                          {t.isDeprecated && <span className="badge badge-rose">Deprecated</span>}
-                          {t.isAlias && <span className="badge badge-indigo">Alias</span>}
-                        </div>
-                        {t.description && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{t.description}</div>}
-                      </td>
-
-                      <td style={{ padding: '14px 20px' }}>
-                        {t.category === 'color' && t.resolvedValue.startsWith('#') && (
-                          <div
-                            style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '6px',
-                              background: t.resolvedValue,
-                              border: '1px solid rgba(255,255,255,0.2)',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-                            }}
-                          />
-                        )}
-                        {t.category === 'spacing' && (
-                          <div
-                            style={{
-                              width: t.resolvedValue,
-                              height: '14px',
-                              background: '#6366f1',
-                              borderRadius: '2px',
-                              opacity: 0.8,
-                            }}
-                          />
-                        )}
-                        {t.category === 'borderRadius' && (
-                          <div
-                            style={{
-                              width: '24px',
-                              height: '24px',
-                              border: '2px solid #06b6d4',
-                              borderRadius: t.resolvedValue === '9999px' ? '50%' : t.resolvedValue,
-                            }}
-                          />
-                        )}
-                        {t.category === 'typography' && <span style={{ fontSize: '11px', color: '#a5b4fc' }}>Aa</span>}
-                      </td>
-
-                      <td style={{ padding: '14px 20px' }}>
-                        <span className="font-mono" style={{ color: '#6ee7b7' }}>{t.resolvedValue}</span>
-                      </td>
-
-                      <td style={{ padding: '14px 20px' }}>
-                        <span className="font-mono" style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                          {t.rawValue}
-                        </span>
-                      </td>
-
-                      <td style={{ padding: '14px 20px' }}>
-                        <span className="badge" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                          {t.category}
-                        </span>
-                      </td>
-
-                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            onClick={() => copyToClipboard(`var(--${t.path.replace(/\./g, '-')})`, t.id)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: copiedKey === t.id ? '#10b981' : 'var(--text-muted)',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
-                            }}
-                          >
-                            {copiedKey === t.id ? <Check size={14} /> : <Copy size={14} />}
-                            {copiedKey === t.id ? 'Copied' : 'CSS'}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteToken(t.id)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--text-muted)',
-                              cursor: 'pointer',
-                              padding: '4px',
-                            }}
-                            title="Delete Token"
-                          >
-                            <Trash2 size={14} color="#f43f5e" />
-                          </button>
-                        </div>
-                      </td>
+            {/* Split View: Tokens Table + Token Inspector Drawer */}
+            <div style={{ display: 'grid', gridTemplateColumns: selectedToken ? '1fr 380px' : '1fr', gap: '24px' }}>
+              {/* Tokens Table */}
+              <div className="glass-panel" style={{ overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '14px 20px', fontWeight: 600 }}>TOKEN PATH</th>
+                      <th style={{ padding: '14px 20px', fontWeight: 600 }}>PREVIEW</th>
+                      <th style={{ padding: '14px 20px', fontWeight: 600 }}>RESOLVED VALUE</th>
+                      <th style={{ padding: '14px 20px', fontWeight: 600 }}>RAW / ALIAS</th>
+                      <th style={{ padding: '14px 20px', fontWeight: 600 }}>CATEGORY</th>
+                      <th style={{ padding: '14px 20px', fontWeight: 600, textAlign: 'right' }}>ACTIONS</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredTokens.map((t) => {
+                      const isSelected = selectedToken?.id === t.id;
+                      return (
+                        <tr
+                          key={t.id}
+                          onClick={() => setSelectedToken(t)}
+                          style={{
+                            borderBottom: '1px solid var(--border-subtle)',
+                            background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s',
+                          }}
+                        >
+                          <td style={{ padding: '14px 20px', fontWeight: 600 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className="font-mono" style={{ color: isSelected ? '#a5b4fc' : '#fff' }}>{t.path}</span>
+                              {t.isDeprecated && <span className="badge badge-rose">Deprecated</span>}
+                              {t.isAlias && <span className="badge badge-indigo">Alias</span>}
+                            </div>
+                            {t.description && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{t.description}</div>}
+                          </td>
+
+                          <td style={{ padding: '14px 20px' }}>
+                            {t.category === 'color' && t.resolvedValue.startsWith('#') && (
+                              <div
+                                style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '6px',
+                                  background: t.resolvedValue,
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                                }}
+                              />
+                            )}
+                            {t.category === 'spacing' && (
+                              <div
+                                style={{
+                                  width: t.resolvedValue,
+                                  height: '14px',
+                                  background: '#6366f1',
+                                  borderRadius: '2px',
+                                  opacity: 0.8,
+                                }}
+                              />
+                            )}
+                            {t.category === 'borderRadius' && (
+                              <div
+                                style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  border: '2px solid #06b6d4',
+                                  borderRadius: t.resolvedValue === '9999px' ? '50%' : t.resolvedValue,
+                                }}
+                              />
+                            )}
+                            {t.category === 'typography' && <span style={{ fontSize: '11px', color: '#a5b4fc' }}>Aa</span>}
+                          </td>
+
+                          <td style={{ padding: '14px 20px' }}>
+                            <span className="font-mono" style={{ color: '#6ee7b7' }}>{t.resolvedValue}</span>
+                          </td>
+
+                          <td style={{ padding: '14px 20px' }}>
+                            <span className="font-mono" style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+                              {t.rawValue}
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '14px 20px' }}>
+                            <span className="badge" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+                              {t.category}
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(`var(--${t.path.replace(/\./g, '-')})`, t.id);
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: copiedKey === t.id ? '#10b981' : 'var(--text-muted)',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '12px',
+                                }}
+                              >
+                                {copiedKey === t.id ? <Check size={14} /> : <Copy size={14} />}
+                                {copiedKey === t.id ? 'Copied' : 'CSS'}
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteToken(t.id);
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'var(--text-muted)',
+                                  cursor: 'pointer',
+                                  padding: '4px',
+                                }}
+                                title="Delete Token"
+                              >
+                                <Trash2 size={14} color="#f43f5e" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Token Inspector Drawer */}
+              {selectedToken && (
+                <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      TOKEN INSPECTOR & GRAPH
+                    </div>
+                    <button
+                      onClick={() => setSelectedToken(null)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div>
+                    <h3 className="font-mono" style={{ fontSize: '16px', fontWeight: 800, color: '#fff', wordBreak: 'break-all' }}>
+                      {selectedToken.path}
+                    </h3>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      {selectedToken.description || 'No description provided'}
+                    </div>
+                  </div>
+
+                  {/* Swatch & Value Preview */}
+                  <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    {selectedToken.category === 'color' && (
+                      <div
+                        style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '8px',
+                          background: selectedToken.resolvedValue,
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                        }}
+                      />
+                    )}
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>RESOLVED VALUE</div>
+                      <div className="font-mono" style={{ fontSize: '18px', fontWeight: 800, color: '#6ee7b7' }}>
+                        {selectedToken.resolvedValue}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visual Alias Chain Graph */}
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#a5b4fc', marginBottom: '8px' }}>
+                      ALIAS DEPENDENCY GRAPH
+                    </div>
+                    {selectedToken.isAlias ? (
+                      <div style={{ background: '#090d16', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="badge badge-indigo">Semantic</span>
+                          <span className="font-mono" style={{ fontSize: '12px', color: '#fff' }}>{selectedToken.path}</span>
+                        </div>
+                        <div style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px' }}>↓ references</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="badge badge-emerald">Primitive</span>
+                          <span className="font-mono" style={{ fontSize: '12px', color: '#6ee7b7' }}>{selectedToken.aliasTarget || selectedToken.rawValue}</span>
+                        </div>
+                        <div style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px' }}>↓ resolves to</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="badge" style={{ background: '#3b82f6', color: '#fff' }}>Literal</span>
+                          <span className="font-mono" style={{ fontSize: '12px', color: '#fff' }}>{selectedToken.resolvedValue}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ background: '#090d16', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        This is a root primitive token with no upstream aliases.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Connected Components in Design System */}
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#a5b4fc', marginBottom: '8px' }}>
+                      CONNECTED COMPONENTS
+                    </div>
+                    {components.filter((c) => c.tokenDependencies?.includes(selectedToken.path)).length > 0 ? (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {components
+                          .filter((c) => c.tokenDependencies?.includes(selectedToken.path))
+                          .map((c) => (
+                            <span key={c.id} className="badge badge-indigo" style={{ padding: '4px 10px' }}>
+                              <Box size={12} style={{ marginRight: '4px' }} />
+                              {c.name}
+                            </span>
+                          ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        No registered components currently declare direct dependency on this token.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Multi-Syntax Quick Copy */}
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>
+                      COPY IMPLEMENTATION SYNTAX
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <button
+                        onClick={() => copyToClipboard(`var(--${selectedToken.path.replace(/\./g, '-')})`, 'insp-css')}
+                        className="btn-secondary"
+                        style={{ fontSize: '11px', padding: '6px 8px', justifyContent: 'center' }}
+                      >
+                        {copiedKey === 'insp-css' ? 'Copied CSS' : 'CSS Custom Prop'}
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`Tokens.${selectedToken.path.split('.').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join('')}`, 'insp-swift')}
+                        className="btn-secondary"
+                        style={{ fontSize: '11px', padding: '6px 8px', justifyContent: 'center' }}
+                      >
+                        {copiedKey === 'insp-swift' ? 'Copied Swift' : 'iOS Swift'}
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`Tokens.${selectedToken.path.split('.').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join('')}`, 'insp-kt')}
+                        className="btn-secondary"
+                        style={{ fontSize: '11px', padding: '6px 8px', justifyContent: 'center' }}
+                      >
+                        {copiedKey === 'insp-kt' ? 'Copied Kotlin' : 'Android Kotlin'}
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`tokens.${selectedToken.path}`, 'insp-ts')}
+                        className="btn-secondary"
+                        style={{ fontSize: '11px', padding: '6px 8px', justifyContent: 'center' }}
+                      >
+                        {copiedKey === 'insp-ts' ? 'Copied TS' : 'TypeScript'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* TAB 3: COMPONENT REGISTRY */}
+        {/* TAB 3: COMPONENT REGISTRY & SANDBOX */}
         {activeTab === 'components' && (
           <div>
             <div style={{ marginBottom: '24px' }}>
               <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-                Component Registry
+                Component Registry & Interactive Sandbox
               </h1>
               <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-                Interactive UI component catalog with live props customization, variant sandboxes, and token dependencies.
+                Interactive UI component catalog with live props customization, variant sandboxes, design token specs, and multi-platform code generation.
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px' }}>
               {/* Components List */}
               <div className="glass-panel" style={{ padding: '16px' }}>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px', paddingLeft: '8px' }}>
@@ -925,7 +1300,7 @@ export function PrimaryCard() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontWeight: 700, color: '#fff' }}>{comp.name}</span>
-                        <span className="badge badge-indigo">{comp.framework}</span>
+                        <span className="badge badge-indigo">{comp.category}</span>
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         {comp.description}
@@ -950,10 +1325,10 @@ export function PrimaryCard() {
 
                   {/* Interactive Props Sandbox Controls */}
                   {selectedComponent.name === 'Button' && (
-                    <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '8px', border: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Variant:</span>
-                        {['primary', 'secondary', 'ghost'].map((v) => (
+                        {['primary', 'secondary', 'ghost', 'danger'].map((v) => (
                           <button
                             key={v}
                             onClick={() => setSelectedVariant(v)}
@@ -999,49 +1374,225 @@ export function PrimaryCard() {
                     </div>
                   )}
 
-                  {/* Live Rendered Component */}
-                  <div style={{ background: '#090d16', borderRadius: '10px', border: '1px solid var(--border-subtle)', padding: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '28px' }}>
+                  {selectedComponent.name === 'Badge' && (
+                    <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tone:</span>
+                        {(['neutral', 'success', 'critical', 'indigo'] as const).map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setBadgeTone(t)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              background: badgeTone === t ? '#6366f1' : 'transparent',
+                              color: badgeTone === t ? '#fff' : 'var(--text-secondary)',
+                              border: '1px solid',
+                              borderColor: badgeTone === t ? '#6366f1' : 'var(--border-subtle)',
+                            }}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedComponent.name === 'Card' && (
+                    <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', background: 'rgba(255,255,255,0.03)', padding: '14px 18px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Variant:</span>
+                        {(['elevated', 'outlined', 'ghost'] as const).map((v) => (
+                          <button
+                            key={v}
+                            onClick={() => setCardVariant(v)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              background: cardVariant === v ? '#6366f1' : 'transparent',
+                              color: cardVariant === v ? '#fff' : 'var(--text-secondary)',
+                              border: '1px solid',
+                              borderColor: cardVariant === v ? '#6366f1' : 'var(--border-subtle)',
+                            }}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Live Rendered Interactive Sandbox Canvas */}
+                  <div style={{ background: '#090d16', borderRadius: '10px', border: '1px solid var(--border-subtle)', padding: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '28px', minHeight: '160px' }}>
                     {selectedComponent.name === 'Button' && (
                       <button
-                        className={selectedVariant === 'primary' ? 'btn-primary' : selectedVariant === 'secondary' ? 'btn-secondary' : 'btn-ghost'}
+                        onClick={() => setButtonClickCount((c) => c + 1)}
+                        className={selectedVariant === 'primary' ? 'btn-primary' : selectedVariant === 'secondary' ? 'btn-secondary' : selectedVariant === 'danger' ? 'btn-danger' : 'btn-ghost'}
                         style={{
-                          padding: selectedSize === 'sm' ? '6px 12px' : selectedSize === 'lg' ? '12px 24px' : '10px 18px',
+                          padding: selectedSize === 'sm' ? '6px 14px' : selectedSize === 'lg' ? '14px 28px' : '10px 20px',
                           fontSize: selectedSize === 'sm' ? '12px' : selectedSize === 'lg' ? '16px' : '14px',
+                          background: selectedVariant === 'danger' ? 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)' : undefined,
                         }}
                       >
-                        Interactive {selectedVariant} Button ({selectedSize})
+                        Interactive {selectedVariant} Button ({selectedSize}) {buttonClickCount > 0 && `• Clicks: ${buttonClickCount}`}
                       </button>
                     )}
+
                     {selectedComponent.name === 'Badge' && (
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <span className="badge badge-indigo" style={{ padding: '6px 14px', fontSize: '13px' }}>Production Active</span>
-                        <span className="badge badge-emerald" style={{ padding: '6px 14px', fontSize: '13px' }}>Synced</span>
+                        <span
+                          className={`badge ${badgeTone === 'success' ? 'badge-emerald' : badgeTone === 'critical' ? 'badge-rose' : badgeTone === 'indigo' ? 'badge-indigo' : 'badge-amber'}`}
+                          style={{ padding: '8px 18px', fontSize: '14px' }}
+                        >
+                          Status Indicator &bull; {badgeTone.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedComponent.name === 'TextInput' && (
+                      <div style={{ width: '100%', maxWidth: '360px' }}>
+                        <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email Address</label>
+                        <input
+                          type="text"
+                          value={inputVal}
+                          onChange={(e) => setInputVal(e.target.value)}
+                          placeholder="name@domain.com"
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            background: '#060913',
+                            border: '1px solid var(--border-accent)',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            fontSize: '14px',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {selectedComponent.name === 'Card' && (
+                      <div
+                        style={{
+                          width: '100%',
+                          maxWidth: '420px',
+                          padding: cardPadding === 'sm' ? '16px' : cardPadding === 'lg' ? '32px' : '24px',
+                          borderRadius: '12px',
+                          background: cardVariant === 'elevated' ? 'rgba(15, 23, 42, 0.9)' : cardVariant === 'outlined' ? 'transparent' : 'rgba(255,255,255,0.02)',
+                          border: '1px solid',
+                          borderColor: cardVariant === 'outlined' ? '#6366f1' : 'var(--border-subtle)',
+                          boxShadow: cardVariant === 'elevated' ? '0 10px 25px -5px rgba(0, 0, 0, 0.5)' : 'none',
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: '16px', color: '#fff', marginBottom: '8px' }}>
+                          Elevated Enterprise Card
+                        </div>
+                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                          Standard container component mapped to radius, spacing, and surface token dependencies.
+                        </p>
                       </div>
                     )}
                   </div>
 
-                  {/* TypeScript Props Specification */}
-                  <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>TypeScript Props Contract</h3>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '28px' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '10px', textAlign: 'left' }}>PROP</th>
-                        <th style={{ padding: '10px', textAlign: 'left' }}>TYPE</th>
-                        <th style={{ padding: '10px', textAlign: 'left' }}>REQUIRED</th>
-                        <th style={{ padding: '10px', textAlign: 'left' }}>DEFAULT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedComponent.props?.map((p: any) => (
-                        <tr key={p.name} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '10px', fontWeight: 600, color: '#fff' }}>{p.name}</td>
-                          <td style={{ padding: '10px', fontFamily: 'monospace', color: '#a5b4fc' }}>{p.type}</td>
-                          <td style={{ padding: '10px' }}>{p.required ? <span className="badge badge-rose">Yes</span> : 'No'}</td>
-                          <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{p.defaultValue || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {/* Multi-Framework Code Generator Tabs */}
+                  <div style={{ marginBottom: '28px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Code Generator</h3>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {(['react', 'html', 'swift', 'kotlin'] as const).map((fw) => (
+                          <button
+                            key={fw}
+                            onClick={() => setComponentFramework(fw)}
+                            style={{
+                              padding: '4px 12px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              background: componentFramework === fw ? '#6366f1' : 'rgba(255, 255, 255, 0.05)',
+                              color: componentFramework === fw ? '#fff' : 'var(--text-secondary)',
+                              border: '1px solid',
+                              borderColor: componentFramework === fw ? '#6366f1' : 'var(--border-subtle)',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {fw}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        onClick={() => copyToClipboard(selectedComponent.codeSnippet || '', 'comp-code')}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '12px',
+                          background: 'rgba(255,255,255,0.1)',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          color: '#fff',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        {copiedKey === 'comp-code' ? <Check size={13} color="#10b981" /> : <Copy size={13} />}
+                        {copiedKey === 'comp-code' ? 'Copied' : 'Copy'}
+                      </button>
+                      <pre
+                        style={{
+                          background: '#090d16',
+                          padding: '18px 20px',
+                          borderRadius: '8px',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '13px',
+                          lineHeight: '1.6',
+                          color: '#a5b4fc',
+                          overflowX: 'auto',
+                        }}
+                      >
+                        {componentFramework === 'react' && (
+                          selectedComponent.name === 'Button'
+                            ? `<Button variant="${selectedVariant}" size="${selectedSize}">Click Me</Button>`
+                            : selectedComponent.name === 'Badge'
+                            ? `<Badge tone="${badgeTone}">Status Indicator</Badge>`
+                            : selectedComponent.name === 'TextInput'
+                            ? `<TextInput placeholder="Enter email..." value="${inputVal}" />`
+                            : `<Card variant="${cardVariant}" padding="${cardPadding}">Content</Card>`
+                        )}
+                        {componentFramework === 'html' && (
+                          selectedComponent.name === 'Button'
+                            ? `<button class="btn btn-${selectedVariant} btn-${selectedSize}">Click Me</button>`
+                            : selectedComponent.name === 'Badge'
+                            ? `<span class="badge badge-${badgeTone}">Status Indicator</span>`
+                            : selectedComponent.name === 'TextInput'
+                            ? `<input class="form-input" placeholder="Enter email..." value="${inputVal}" />`
+                            : `<div class="card card-${cardVariant} p-${cardPadding}">Content</div>`
+                        )}
+                        {componentFramework === 'swift' && (
+                          selectedComponent.name === 'Button'
+                            ? `Button(action: { /* action */ }) {\n  Text("Click Me")\n    .padding(.horizontal, Tokens.Spacing.md)\n    .background(Tokens.ColorBrandPrimary)\n    .cornerRadius(Tokens.BorderRadius.md)\n}`
+                            : `Text("Badge").badge(Tokens.ColorBrandPrimary)`
+                        )}
+                        {componentFramework === 'kotlin' && (
+                          selectedComponent.name === 'Button'
+                            ? `Button(\n  onClick = { /* action */ },\n  colors = ButtonDefaults.buttonColors(backgroundColor = Tokens.ColorBrandPrimary),\n  shape = RoundedCornerShape(Tokens.BorderRadius.md)\n) {\n  Text("Click Me")\n}`
+                            : `Badge { Text("Active") }`
+                        )}
+                      </pre>
+                    </div>
+                  </div>
 
                   {/* Token Dependencies */}
                   <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Design Token Dependencies</h3>
@@ -1067,11 +1618,11 @@ export function PrimaryCard() {
                   Quality Intelligence & Compliance
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-                  Deterministic linter catching hardcoded hex colors, unregistered variables, and deprecated tokens with SARIF reports.
+                  Deterministic linter catching hardcoded hex colors, unregistered variables, and deprecated tokens with SARIF reports and 1-click token remediation.
                 </p>
               </div>
 
-              <button onClick={runAudit} disabled={auditing} className="btn-primary">
+              <button onClick={() => runAudit()} disabled={auditing} className="btn-primary">
                 {auditing ? <RefreshCw size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
                 Run Code Audit
               </button>
@@ -1127,7 +1678,10 @@ export function PrimaryCard() {
                   ) : auditReport.findings.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#10b981' }}>
                       <CheckCircle2 size={36} style={{ marginBottom: '12px' }} />
-                      <div style={{ fontWeight: 700 }}>100% Compliant! No design system violations detected.</div>
+                      <div style={{ fontWeight: 700, fontSize: '16px' }}>100% Compliant!</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Zero design system violations found. All styles cleanly utilize registered design tokens.
+                      </div>
                     </div>
                   ) : (
                     auditReport.findings.map((f: any, idx: number) => (
@@ -1154,11 +1708,20 @@ export function PrimaryCard() {
                         <div style={{ background: '#060913', padding: '8px 12px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>
                           {f.evidence}
                         </div>
-                        {f.suggestedFix && (
-                          <div style={{ fontSize: '12px', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <CheckCircle2 size={13} /> {f.suggestedFix}
-                          </div>
-                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          {f.suggestedFix && (
+                            <div style={{ fontSize: '12px', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <CheckCircle2 size={13} /> {f.suggestedFix}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleApplyFix(f.ruleId, f.suggestedFix)}
+                            className="btn-secondary"
+                            style={{ fontSize: '11px', padding: '4px 10px', color: '#6ee7b7', borderColor: 'rgba(110, 231, 183, 0.3)' }}
+                          >
+                            <Wand2 size={12} /> Auto-Fix
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -1183,8 +1746,15 @@ export function PrimaryCard() {
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
-                  onClick={() => exportedContent && copyToClipboard(exportedContent.content, 'exported-code')}
+                  onClick={handleDownloadExport}
                   className="btn-secondary"
+                  style={{ color: '#06b6d4', borderColor: 'rgba(6, 182, 212, 0.3)' }}
+                >
+                  <Download size={14} /> Download File
+                </button>
+                <button
+                  onClick={() => exportedContent && copyToClipboard(exportedContent.content, 'exported-code')}
+                  className="btn-primary"
                 >
                   {copiedKey === 'exported-code' ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
                   {copiedKey === 'exported-code' ? 'Copied!' : 'Copy Code'}
@@ -1247,7 +1817,64 @@ export function PrimaryCard() {
           </div>
         )}
 
-        {/* TAB 6: MCP AGENT PLAYGROUND */}
+        {/* TAB 6: RELEASES & VERSION HISTORY */}
+        {activeTab === 'releases' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+              <div>
+                <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '8px' }}>
+                  Design System Releases & Version History
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
+                  Immutable version snapshots of design tokens and components with changelogs and audit metrics.
+                </p>
+              </div>
+
+              <button onClick={() => setShowReleaseModal(true)} className="btn-primary">
+                <Plus size={14} /> Publish New Release
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {releasesList.map((rel, idx) => (
+                <div key={rel.id || idx} className="glass-panel" style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span className="badge badge-emerald" style={{ fontSize: '14px', padding: '6px 14px' }}>
+                        v{rel.version}
+                      </span>
+                      <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>{rel.title}</h3>
+                    </div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {new Date(rel.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                    {rel.description}
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                    <span className="badge badge-indigo">Tokens: {rel.tokensCount}</span>
+                    <span className="badge badge-amber">Components: {rel.componentsCount}</span>
+                    <span className="badge badge-emerald">W3C Compliant</span>
+                  </div>
+
+                  <div style={{ background: '#090d16', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#a5b4fc', marginBottom: '6px' }}>
+                      CHANGELOG
+                    </div>
+                    <pre style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#cbd5e1', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                      {rel.changelog}
+                    </pre>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: MCP AGENT PLAYGROUND */}
         {activeTab === 'mcp' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -1360,7 +1987,7 @@ export function PrimaryCard() {
           </div>
         )}
 
-        {/* TAB 7: GITHUB CONTINUOUS DELIVERY */}
+        {/* TAB 8: GITHUB CONTINUOUS DELIVERY */}
         {activeTab === 'delivery' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -1413,22 +2040,32 @@ export function PrimaryCard() {
           </div>
         )}
 
-        {/* TAB 8: DOCUMENTATION STUDIO */}
+        {/* TAB 9: DOCUMENTATION STUDIO */}
         {activeTab === 'docs' && (
           <div>
-            <div style={{ marginBottom: '24px' }}>
-              <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-                Living Documentation Studio
-              </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-                Self-updating design system documentation directly bound to PostgreSQL database tokens.
-              </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+              <div>
+                <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '8px' }}>
+                  Living Documentation Studio
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
+                  Self-updating design system documentation directly bound to PostgreSQL database tokens.
+                </p>
+              </div>
+
+              <a href="/docs" target="_blank" rel="noreferrer" className="btn-primary" style={{ textDecoration: 'none' }}>
+                <ExternalLink size={14} /> Open Full Documentation Portal (/docs)
+              </a>
             </div>
 
-            <div className="glass-panel" style={{ padding: '36px', maxWidth: '840px', lineHeight: '1.8' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '12px', color: '#fff' }}>
-                Nova Design System Guidelines
-              </h2>
+            <div className="glass-panel" style={{ padding: '36px', maxWidth: '880px', lineHeight: '1.8' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff' }}>
+                  Nova Design System Guidelines
+                </h2>
+                <span className="badge badge-indigo">Version v{activeRelease.version}</span>
+              </div>
+
               <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
                 Welcome to Acme's unified design system. All engineering components and AI coding agents consume tokens verified through our Model Context Protocol (MCP) server.
               </p>
@@ -1619,6 +2256,66 @@ export function PrimaryCard() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: PUBLISH VERSION RELEASE */}
+      {showReleaseModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-panel" style={{ width: '520px', padding: '28px', background: '#0c1222', border: '1px solid #a5b4fc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Tag size={22} color="#a5b4fc" />
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 800 }}>Publish Design System Release</h2>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Create an immutable version snapshot with tokens, components, and changelog.</div>
+              </div>
+            </div>
+
+            <form onSubmit={handlePublishRelease}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Version (SemVer)</label>
+                <input
+                  type="text"
+                  value={newReleaseVersion}
+                  onChange={(e) => setNewReleaseVersion(e.target.value)}
+                  required
+                  placeholder="1.4.0"
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', background: '#060913', border: '1px solid var(--border-subtle)', color: '#fff', fontSize: '13px', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Release Title</label>
+                <input
+                  type="text"
+                  value={newReleaseTitle}
+                  onChange={(e) => setNewReleaseTitle(e.target.value)}
+                  required
+                  placeholder="Typography Scale & Component Refactor"
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', background: '#060913', border: '1px solid var(--border-subtle)', color: '#fff', fontSize: '13px', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Changelog Notes</label>
+                <textarea
+                  value={newReleaseChangelog}
+                  onChange={(e) => setNewReleaseChangelog(e.target.value)}
+                  rows={4}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', background: '#060913', border: '1px solid var(--border-subtle)', color: '#fff', fontSize: '12px', outline: 'none', resize: 'none', lineHeight: '1.6' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setShowReleaseModal(false)} className="btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" disabled={publishingRelease} className="btn-primary">
+                  {publishingRelease ? 'Publishing...' : 'Publish Version Release'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

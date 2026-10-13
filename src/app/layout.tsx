@@ -141,6 +141,29 @@ export default function RootLayout({
                 />
                 MCP Protocol Live
               </div>
+
+              <a
+                href="/docs"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  color: '#a5b4fc',
+                  textDecoration: 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>Living Docs</span>
+                <span style={{ fontSize: '11px' }}>↗</span>
+              </a>
             </div>
           </header>
 

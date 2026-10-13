@@ -79,3 +79,15 @@ export const deliveryJobs = pgTable('delivery_jobs', {
   diffSummary: text('diff_summary'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const releases = pgTable('releases', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  version: text('version').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  tokensCount: integer('tokens_count').notNull().default(0),
+  componentsCount: integer('components_count').notNull().default(0),
+  changelog: text('changelog'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});

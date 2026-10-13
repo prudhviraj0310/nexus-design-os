@@ -1,5 +1,5 @@
 import { getDb } from './index';
-import { workspaces, projects, designSystems, tokens, components } from './schema';
+import { workspaces, projects, designSystems, tokens, components, releases } from './schema';
 import { parseDTCGTree } from '../core/tokens/parser';
 import { resolveTokenAliases } from '../core/tokens/resolver';
 
@@ -160,12 +160,76 @@ export async function seedDatabase(customDb?: any) {
     isDeprecated: false,
   }).onConflictDoNothing();
 
+  await db.insert(components).values({
+    id: 'comp-input',
+    designSystemId,
+    name: 'TextInput',
+    category: 'inputs',
+    framework: 'react',
+    description: 'Accessible form input field with error and focus states.',
+    props: [
+      { name: 'placeholder', type: 'string', required: false },
+      { name: 'disabled', type: 'boolean', required: false },
+      { name: 'error', type: 'string', required: false },
+    ],
+    variants: [
+      { name: 'state', values: ['default', 'focus', 'error', 'disabled'] },
+    ],
+    codeSnippet: '<TextInput placeholder="Enter email address..." />',
+    tokenDependencies: ['color.primitive.slate.900', 'spacing.sm', 'borderRadius.md'],
+    isDeprecated: false,
+  }).onConflictDoNothing();
+
+  await db.insert(components).values({
+    id: 'comp-card',
+    designSystemId,
+    name: 'Card',
+    category: 'layout',
+    framework: 'react',
+    description: 'Structured container card supporting elevated and outlined styles.',
+    props: [
+      { name: 'variant', type: "'elevated' | 'outlined' | 'ghost'", required: false },
+      { name: 'padding', type: "'sm' | 'md' | 'lg'", required: false },
+      { name: 'children', type: 'ReactNode', required: true },
+    ],
+    variants: [
+      { name: 'variant', values: ['elevated', 'outlined', 'ghost'] },
+      { name: 'padding', values: ['sm', 'md', 'lg'] },
+    ],
+    codeSnippet: '<Card variant="elevated" padding="md"><h3>Title</h3></Card>',
+    tokenDependencies: ['color.primitive.slate.100', 'spacing.md', 'borderRadius.md'],
+    isDeprecated: false,
+  }).onConflictDoNothing();
+
+  // 6. Register Design System Releases
+  await db.insert(releases).values({
+    id: 'rel-1-0-0',
+    designSystemId,
+    version: '1.0.0',
+    title: 'Initial Token Foundation Release',
+    description: 'W3C DTCG core token specification, primitives, and base web CSS exporter.',
+    tokensCount: 16,
+    componentsCount: 1,
+    changelog: '• Initial release of primitive and semantic blue palettes\n• W3C DTCG JSON format export\n• Button component specs',
+  }).onConflictDoNothing();
+
+  await db.insert(releases).values({
+    id: 'rel-1-2-0',
+    designSystemId,
+    version: '1.2.0',
+    title: 'Mobile Exporters & Dark Mode Support',
+    description: 'Added Swift/SwiftUI and Kotlin/Jetpack Compose code exporters, plus dark theme overrides.',
+    tokensCount: 20,
+    componentsCount: 4,
+    changelog: '• Added iOS Swift Color and CGFloat exporters\n• Added Android Jetpack Compose Color and Dp exporters\n• Added dark theme mode overrides\n• Added TextInput, Badge, and Card components',
+  }).onConflictDoNothing();
+
   return {
     workspaceId,
     projectId,
     designSystemId,
     tokenCount: resolved.tokens.length,
-    componentCount: 2,
+    componentCount: 4,
   };
 }
 
