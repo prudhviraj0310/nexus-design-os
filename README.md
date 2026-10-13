@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🪐 PULSAR DESIGN OS
+# ⚡ NEXUS DESIGN OS
 
 ### The Enterprise Open-Source Design System Operating System & AI Context Engine
 
@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 <p align="center">
-  <b>Pulsar Design OS</b> is a unified, enterprise-grade design system engine connecting Figma variables to code tokens, generating multi-platform code (Tailwind, CSS, TS, iOS Swift, Android Kotlin), enforcing AST code compliance, and serving live design context to AI Coding Agents (Cursor, Claude, Copilot) via the <b>Model Context Protocol (MCP)</b>.
+  <b>Nexus Design OS</b> is a unified, enterprise-grade design system engine connecting Figma variables to code tokens, generating multi-platform code (Tailwind, CSS, TS, iOS Swift, Android Kotlin), enforcing AST code compliance, and serving live design context to AI Coding Agents (Cursor, Claude, Copilot) via the <b>Model Context Protocol (MCP)</b>.
 </p>
 
 [Explore Features](#-features) • [Screenshots](#-visual-walkthrough) • [Quick Start](#-quick-start) • [MCP Server](#-model-context-protocol-mcp-integration) • [Architecture](#-architecture) • [CLI Reference](#-cli-reference)
@@ -23,7 +23,7 @@
 ## 📸 Visual Walkthrough
 
 ### 1. Central Design System Hub & Live Graph Architecture
-Visual node graph connecting data sources (Figma, Tokens Studio, Storybook) through Pulsar's central token normalization engine to destinations (React, Tailwind, iOS Swift, Android Kotlin, Cursor, Claude).
+Visual node graph connecting data sources (Figma, Tokens Studio, Storybook) through Nexus's central token normalization engine to destinations (React, Tailwind, iOS Swift, Android Kotlin, Cursor, Claude).
 
 ![Overview Hub](docs/screenshots/overview-hub.png)
 
@@ -62,7 +62,7 @@ Pure white enterprise documentation portal with official Contexts 101 guide, liv
   - **iOS SwiftUI** (`Tokens.swift` with `Color(hex:)` extensions)
   - **Android Jetpack Compose** (`Tokens.kt` with `Color(0xFF...)` values)
 - 🔍 **Babel AST Quality Intelligence Linter:** Evaluates JSX/TSX Abstract Syntax Trees to flag hardcoded hex codes, un-tokenized spacing, and deprecated tokens—automatically suggesting replacement token variables.
-- 🚀 **Continuous Delivery GitHub Pipeline:** Automatically generates Git branches (`pulsar/sync-*`), stages diff summaries, commits token updates, and opens GitHub Pull Requests.
+- 🚀 **Continuous Delivery GitHub Pipeline:** Automatically generates Git branches (`nexus/sync-*`), stages diff summaries, commits token updates, and opens GitHub Pull Requests.
 - ⚡ **Zero-Dependency Embedded Database:** Powered by embedded WASM PostgreSQL (`PGlite`) with Drizzle ORM—runs locally or in containers without requiring an external database cluster.
 
 ---
@@ -77,7 +77,7 @@ flowchart TD
         Storybook["Storybook Component Docs"]
     end
 
-    subgraph CoreEngine["2. Pulsar Central Engine"]
+    subgraph CoreEngine["2. Nexus Central Engine"]
         PG["Embedded PostgreSQL (PGlite)"]
         DTCG["W3C DTCG Token Normalizer"]
         Resolver["Alias Chain Resolver"]
@@ -121,8 +121,8 @@ flowchart TD
 
 ### 2. Installation
 ```bash
-git clone https://github.com/prudhviraj0310/pulsar-design-os.git
-cd pulsar-design-os
+git clone https://github.com/prudhviraj0310/nexus-design-os.git
+cd nexus-design-os
 npm install
 ```
 
@@ -136,7 +136,7 @@ npm run cli seed
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) for the **Pulsar Studio Platform** or [http://localhost:3000/docs](http://localhost:3000/docs) for the **Living Docs Portal**.
+Open [http://localhost:3000](http://localhost:3000) for the **Nexus Studio Platform** or [http://localhost:3000/docs](http://localhost:3000/docs) for the **Living Docs Portal**.
 
 ### 5. Run Automated Tests
 ```bash
@@ -148,14 +148,14 @@ Executes all 30 automated tests across token resolvers, exporters, AST linters, 
 
 ## 🤖 Model Context Protocol (MCP) Integration
 
-Pulsar exposes an official MCP server over both **HTTP (`/api/mcp`)** and **Stdio (`npm run mcp`)**.
+Nexus exposes an official MCP server over both **HTTP (`/api/mcp`)** and **Stdio (`npm run mcp`)**.
 
 ### Configure Cursor IDE
 Add to your project's `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "pulsar-design-os": {
+    "nexus-design-os": {
       "url": "http://localhost:3000/api/mcp"
     }
   }
@@ -167,9 +167,9 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "pulsar-design-os": {
+    "nexus-design-os": {
       "command": "npx",
-      "args": ["tsx", "/absolute/path/to/pulsar-design-os/src/mcp/server.ts"]
+      "args": ["tsx", "/absolute/path/to/nexus-design-os/src/mcp/server.ts"]
     }
   }
 }
@@ -192,7 +192,7 @@ Add to your `claude_desktop_config.json`:
 
 ## 💻 CLI Reference
 
-Pulsar includes a standalone CLI for CI/CD environments and developer workflows:
+Nexus includes a standalone CLI for CI/CD environments and developer workflows:
 
 ```bash
 # Display CLI commands manual
@@ -235,7 +235,7 @@ npm run cli mcp
 
 ## 🧪 Quality & Verification
 
-Every component of Pulsar Design OS is rigorously validated:
+Every component of Nexus Design OS is rigorously validated:
 - **Unit & Integration Tests:** 30 / 30 tests pass via Vitest (`npm test`).
 - **Production Build:** Turbopack compiles in under 1 second with 0 TypeScript errors (`npm run build:next`).
 - **Standards Compliant:** W3C Design Tokens Community Group (DTCG) syntax compliant.

@@ -1,7 +1,7 @@
 {
-  "name": "pulsar-design-os",
+  "name": "nexus-design-os",
   "version": "1.0.0",
-  "description": "Pulsar Design OS — Enterprise Design System Operating System & AI Context Engine",
+  "description": "Nexus Design OS — The Enterprise Design System Operating System & AI Context Engine",
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3000",
