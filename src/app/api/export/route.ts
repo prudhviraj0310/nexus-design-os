@@ -6,12 +6,15 @@ import { exportToCss } from '@/core/exporters/css';
 import { exportToJson } from '@/core/exporters/json';
 import { exportToTypeScript } from '@/core/exporters/typescript';
 import { exportToTailwind } from '@/core/exporters/tailwind';
+import { exportToSwift } from '@/core/exporters/swift';
+import { exportToKotlin } from '@/core/exporters/kotlin';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'all';
     const prefix = searchParams.get('prefix') || 'nova';
+    const themeMode = (searchParams.get('themeMode') as any) || 'both';
 
     const { db } = await getDb();
     const dbTokens = await db.select().from(tokens);
@@ -29,15 +32,19 @@ export async function GET(request: Request) {
       description: t.description || undefined,
     }));
 
-    const css = exportToCss(flatTokens, { prefix });
+    const css = exportToCss(flatTokens, { prefix, themeMode });
     const json = exportToJson(flatTokens);
     const ts = exportToTypeScript(flatTokens);
     const tw = exportToTailwind(flatTokens, { prefix });
+    const swift = exportToSwift(flatTokens);
+    const kotlin = exportToKotlin(flatTokens);
 
     if (format === 'css') return NextResponse.json(css);
     if (format === 'json') return NextResponse.json(json);
     if (format === 'typescript') return NextResponse.json(ts);
     if (format === 'tailwind') return NextResponse.json(tw);
+    if (format === 'swift') return NextResponse.json(swift);
+    if (format === 'kotlin') return NextResponse.json(kotlin);
 
     return NextResponse.json({
       success: true,
@@ -46,6 +53,8 @@ export async function GET(request: Request) {
         json,
         typescript: ts,
         tailwind: tw,
+        swift,
+        kotlin,
       },
     });
   } catch (err: any) {

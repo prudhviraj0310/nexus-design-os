@@ -1,5 +1,5 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -14,6 +14,12 @@ import { exportToCss } from '../core/exporters/css';
 import { exportToJson } from '../core/exporters/json';
 import { exportToTypeScript } from '../core/exporters/typescript';
 import { exportToTailwind } from '../core/exporters/tailwind';
+import { exportToSwift } from '../core/exporters/swift';
+import { exportToKotlin } from '../core/exporters/kotlin';
+import { FigmaClient } from '../core/figma/client';
+import { mapFigmaVariablesToDTCG } from '../core/figma/mapper';
+import { computeTokenDiff } from '../core/figma/diff';
+import { resolveTokenAliases } from '../core/tokens/resolver';
 
 const auditEngine = new AuditEngine();
 
@@ -85,7 +91,7 @@ export const NOVA_TOOLS: Tool[] = [
   },
   {
     name: 'generate_code',
-    description: 'Deterministically generate production code artifacts (CSS custom properties, JSON, TypeScript, Tailwind) from design tokens.',
+    description: 'Deterministically generate production code artifacts (CSS, JSON, TypeScript, Tailwind, Swift, Kotlin) from design tokens.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -93,12 +99,43 @@ export const NOVA_TOOLS: Tool[] = [
         projectId: { type: 'string', description: 'The project ID' },
         format: {
           type: 'string',
-          enum: ['css', 'json', 'typescript', 'tailwind'],
+          enum: ['css', 'json', 'typescript', 'tailwind', 'swift', 'kotlin'],
           description: 'Target export format',
         },
         prefix: { type: 'string', description: 'Optional prefix for token variables' },
       },
       required: ['workspaceId', 'projectId', 'format'],
+    },
+  },
+  {
+    name: 'import_figma_variables',
+    description: 'Import or preview Figma design variables into the design system and compute the conflict diff.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspaceId: { type: 'string', description: 'The workspace ID' },
+        projectId: { type: 'string', description: 'The project ID' },
+        fileKey: { type: 'string', description: 'Figma file key' },
+        modeName: { type: 'string', description: 'Mode name (e.g. "Light")' },
+        dryRun: { type: 'boolean', description: 'If true, returns preview diff without saving' },
+      },
+      required: ['workspaceId', 'projectId', 'fileKey'],
+    },
+  },
+  {
+    name: 'propose_token_changes',
+    description: 'Propose adding or updating a design token in the system with path, value, and category.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspaceId: { type: 'string', description: 'The workspace ID' },
+        projectId: { type: 'string', description: 'The project ID' },
+        tokenPath: { type: 'string', description: 'Token path (e.g. "color.feedback.warning")' },
+        rawValue: { type: 'string', description: 'Raw value (e.g. "#f59e0b" or alias "{color.brand.accent}")' },
+        category: { type: 'string', description: 'Token category' },
+        description: { type: 'string', description: 'Token description' },
+      },
+      required: ['workspaceId', 'projectId', 'tokenPath', 'rawValue', 'category'],
     },
   },
 ];
@@ -107,7 +144,7 @@ export function createNovaMcpServer(dbHelper?: any) {
   const server = new Server(
     {
       name: 'novadesign-mcp-server',
-      version: '0.1.0',
+      version: '0.2.0',
     },
     {
       capabilities: {
@@ -116,17 +153,14 @@ export function createNovaMcpServer(dbHelper?: any) {
     }
   );
 
-  // List tools handler
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return { tools: NOVA_TOOLS };
   });
 
-  // Call tool handler
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     const { db } = dbHelper ? dbHelper : await getDb();
 
-    // Verify workspace and project access
     const workspaceId = args?.workspaceId as string;
     const projectId = args?.projectId as string;
 
@@ -137,7 +171,6 @@ export function createNovaMcpServer(dbHelper?: any) {
       };
     }
 
-    // Verify project belongs to workspace
     const projectRecord = await db
       .select()
       .from(projects)
@@ -151,7 +184,6 @@ export function createNovaMcpServer(dbHelper?: any) {
       };
     }
 
-    // Get active design system for project
     const dsRecord = await db
       .select()
       .from(designSystems)
@@ -346,6 +378,12 @@ export function createNovaMcpServer(dbHelper?: any) {
           case 'tailwind':
             generated = exportToTailwind(flatTokens, { prefix });
             break;
+          case 'swift':
+            generated = exportToSwift(flatTokens, { prefix });
+            break;
+          case 'kotlin':
+            generated = exportToKotlin(flatTokens, { prefix });
+            break;
           default:
             return {
               isError: true,
@@ -358,6 +396,98 @@ export function createNovaMcpServer(dbHelper?: any) {
             {
               type: 'text',
               text: JSON.stringify(generated, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'import_figma_variables': {
+        const fileKey = args?.fileKey as string;
+        const modeName = (args?.modeName as string) || 'Light';
+        const dryRun = Boolean(args?.dryRun);
+
+        const client = new FigmaClient();
+        const rawPayload = await client.getVariables({ fileKey, modeName, dryRun });
+        const mapped = mapFigmaVariablesToDTCG(rawPayload, modeName);
+        const { tokens: resolvedIncoming } = resolveTokenAliases(mapped);
+
+        const dbTokens = await db.select().from(tokens).where(eq(tokens.designSystemId, ds.id));
+        const flatExisting: FlatToken[] = dbTokens.map((t: any) => ({
+          name: t.name,
+          path: t.path,
+          category: t.category,
+          type: t.type,
+          rawValue: t.rawValue,
+          resolvedValue: t.resolvedValue,
+          isAlias: t.isAlias,
+          aliasTarget: t.aliasTarget || undefined,
+          isDeprecated: t.isDeprecated,
+        }));
+
+        const diff = computeTokenDiff(flatExisting, resolvedIncoming);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                fileKey,
+                modeName,
+                totalVariablesFound: mapped.length,
+                diff,
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'propose_token_changes': {
+        const tokenPath = args?.tokenPath as string;
+        const rawValue = args?.rawValue as string;
+        const category = args?.category as string;
+        const description = args?.description as string | undefined;
+
+        const isAlias = rawValue.startsWith('{') && rawValue.endsWith('}');
+        const aliasTarget = isAlias ? rawValue.slice(1, -1).trim() : null;
+
+        const tokenId = `tok-${tokenPath.replace(/\./g, '-')}`;
+        await db
+          .insert(tokens)
+          .values({
+            id: tokenId,
+            designSystemId: ds.id,
+            name: tokenPath.split('.').pop() || tokenPath,
+            path: tokenPath,
+            category,
+            type: category === 'color' ? 'color' : 'dimension',
+            rawValue,
+            resolvedValue: rawValue,
+            isAlias,
+            aliasTarget,
+            description: description || null,
+          })
+          .onConflictDoUpdate({
+            target: tokens.id,
+            set: {
+              rawValue,
+              resolvedValue: rawValue,
+              isAlias,
+              aliasTarget,
+              category,
+              description: description || null,
+            },
+          });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                message: `Token "${tokenPath}" updated in design system.`,
+                path: tokenPath,
+                rawValue,
+              }, null, 2),
             },
           ],
         };
@@ -381,7 +511,6 @@ export async function runStdioServer() {
   console.error('NovaDesign MCP Server running on Stdio');
 }
 
-// Auto-run if executed directly
 if (process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js')) {
   runStdioServer().catch((err) => {
     console.error('Fatal MCP Server error:', err);

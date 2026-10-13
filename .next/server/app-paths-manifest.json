@@ -5,6 +5,7 @@
   "/api/components/route": "app/api/components/route.js",
   "/api/deliver/route": "app/api/deliver/route.js",
   "/api/export/route": "app/api/export/route.js",
+  "/api/figma/sync/route": "app/api/figma/sync/route.js",
   "/api/mcp/route": "app/api/mcp/route.js",
   "/api/tokens/route": "app/api/tokens/route.js",
   "/page": "app/page.js"

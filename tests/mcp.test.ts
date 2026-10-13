@@ -22,6 +22,8 @@ describe('MCP Server: Project-Scoped Tools & Context Delivery', () => {
       'list_components',
       'check_compliance',
       'generate_code',
+      'import_figma_variables',
+      'propose_token_changes',
     ]);
   });
 

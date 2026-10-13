@@ -109,6 +109,16 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/api/figma/sync/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/figma/sync">> = Specific
+  const handler = {} as typeof import("../../src/app/api/figma/sync/route.js")
+  type __Check = __IsExpected<typeof handler>
+  
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/api/mcp/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/mcp">> = Specific

@@ -66,6 +66,12 @@
       "namedRegex": "^/api/export(?:/)?$"
     },
     {
+      "page": "/api/figma/sync",
+      "regex": "^/api/figma/sync(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/figma/sync(?:/)?$"
+    },
+    {
       "page": "/api/mcp",
       "regex": "^/api/mcp(?:/)?$",
       "routeKeys": {},

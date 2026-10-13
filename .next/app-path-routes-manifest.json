@@ -5,6 +5,7 @@
   "/api/components/route": "/api/components",
   "/api/deliver/route": "/api/deliver",
   "/api/export/route": "/api/export",
+  "/api/figma/sync/route": "/api/figma/sync",
   "/api/mcp/route": "/api/mcp",
   "/api/tokens/route": "/api/tokens",
   "/page": "/"
