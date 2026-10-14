@@ -42,7 +42,7 @@ export function exportToKotlin(tokens: FlatToken[], options: ExporterOptions = {
   const colorTokens = tokens.filter((t) => t.category === 'color');
   for (const token of colorTokens) {
     const propName = toPascalCase(token.path.replace(/^color\./, ''));
-    let hex = token.resolvedValue;
+    const hex = typeof token.resolvedValue === 'string' ? token.resolvedValue : '';
     if (hex && hex.startsWith('#')) {
       let cleanHex = hex.replace('#', '').toUpperCase();
       if (cleanHex.length === 3) {
@@ -78,7 +78,7 @@ export function exportToKotlin(tokens: FlatToken[], options: ExporterOptions = {
   const spacingTokens = tokens.filter((t) => t.category === 'spacing');
   for (const token of spacingTokens) {
     const propName = toPascalCase(token.path.replace(/^spacing\./, ''));
-    const numeric = parseFloat(token.resolvedValue) || 0;
+    const numeric = parseFloat(typeof token.resolvedValue === 'string' ? token.resolvedValue : '0') || 0;
     lines.push(`    /** ${token.description || token.path} */`);
     lines.push(`    val ${propName}: Dp = ${numeric}.dp`);
   }
@@ -91,7 +91,7 @@ export function exportToKotlin(tokens: FlatToken[], options: ExporterOptions = {
     lines.push(`object NovaRadii {`);
     for (const token of radiusTokens) {
       const propName = toPascalCase(token.path.replace(/^borderRadius\./, ''));
-      const numeric = parseFloat(token.resolvedValue) || 0;
+      const numeric = parseFloat(typeof token.resolvedValue === 'string' ? token.resolvedValue : '0') || 0;
       lines.push(`    /** ${token.description || token.path} */`);
       lines.push(`    val ${propName}: Dp = ${numeric}.dp`);
     }

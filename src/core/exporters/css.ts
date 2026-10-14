@@ -1,9 +1,11 @@
 import { FlatToken } from '../tokens/types';
+import { formatCssValue } from './css-utils';
 import { ExporterOptions, GeneratedFile } from './types';
 
 export interface CssExporterOptions extends ExporterOptions {
   themeMode?: 'light' | 'dark' | 'both';
   darkSelector?: string; // default '[data-theme="dark"]'
+  themeTokens?: FlatToken[];
 }
 
 export function tokenPathToCssVar(path: string, prefix?: string): string {
@@ -36,9 +38,13 @@ export function exportToCss(tokens: FlatToken[], options: CssExporterOptions = {
       const varName = tokenPathToCssVar(token.path, prefix);
       const desc = token.description ? ` /* ${token.description} */` : '';
       
-      let val = token.resolvedValue;
-      if (token.isAlias && token.aliasTarget && !token.resolvedValue.startsWith('[')) {
+      let val: string;
+      if (token.isAlias && token.aliasTarget && (typeof token.resolvedValue !== 'string' || !token.resolvedValue.startsWith('['))) {
         val = `var(${tokenPathToCssVar(token.aliasTarget, prefix)})`;
+      } else if (typeof token.resolvedValue === 'object') {
+        val = formatCssValue(token);
+      } else {
+        val = String(token.resolvedValue);
       }
 
       lines.push(`${indent}${varName}: ${val};${desc}`);
@@ -57,19 +63,27 @@ export function exportToCss(tokens: FlatToken[], options: CssExporterOptions = {
     lines.push(`/* --- DARK THEME OVERRIDES --- */`);
     lines.push(`${darkSelector} {`);
     
-    // In dark theme, swap surface and text tokens appropriately
-    const darkOverrides = [
-      { path: 'color.primitive.slate.100', val: '#0f172a' },
-      { path: 'color.primitive.slate.900', val: '#f8fafc' },
-      { path: 'color.text.primary', val: '#f8fafc' },
-      { path: 'color.bg.surface', val: '#0f172a' },
-    ];
+    if (options.themeTokens && options.themeTokens.length > 0) {
+      for (const t of options.themeTokens) {
+        const varName = tokenPathToCssVar(t.path, prefix);
+        const val = typeof t.resolvedValue === 'object' ? formatCssValue(t) : String(t.resolvedValue);
+        lines.push(`${indent}${varName}: ${val};`);
+      }
+    } else {
+      // Fallback default dark theme overrides
+      const darkOverrides = [
+        { path: 'color.primitive.slate.100', val: '#0f172a' },
+        { path: 'color.primitive.slate.900', val: '#f8fafc' },
+        { path: 'color.text.primary', val: '#f8fafc' },
+        { path: 'color.bg.surface', val: '#0f172a' },
+      ];
 
-    for (const override of darkOverrides) {
-      const matched = tokens.find((t) => t.path === override.path);
-      if (matched) {
-        const varName = tokenPathToCssVar(matched.path, prefix);
-        lines.push(`${indent}${varName}: ${override.val};`);
+      for (const override of darkOverrides) {
+        const matched = tokens.find((t) => t.path === override.path);
+        if (matched) {
+          const varName = tokenPathToCssVar(matched.path, prefix);
+          lines.push(`${indent}${varName}: ${override.val};`);
+        }
       }
     }
 

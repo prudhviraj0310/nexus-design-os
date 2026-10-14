@@ -36,7 +36,7 @@ export function exportToJson(tokens: FlatToken[], options: ExporterOptions = {})
 }
 
 export function exportToFlatJson(tokens: FlatToken[], options: ExporterOptions = {}): GeneratedFile {
-  const map: Record<string, string> = {};
+  const map: Record<string, any> = {};
   for (const token of tokens) {
     map[token.path] = token.resolvedValue;
   }

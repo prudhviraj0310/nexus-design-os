@@ -90,11 +90,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const persistentId = body.persistentId || `pid-${path.replace(/\./g, '-')}`;
+    const versionId = body.versionId || `ver-draft-${designSystemId}`;
+    const brandId = body.brandId || `brand-default-${designSystemId}`;
+    const originSourceId = body.originSourceId || null;
+
     await db
       .insert(tokens)
       .values({
         id: tokenId,
+        persistentId,
         designSystemId,
+        versionId,
+        brandId,
+        originSourceId,
         name: tempToken.name,
         path,
         category,

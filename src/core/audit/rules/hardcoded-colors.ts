@@ -12,7 +12,7 @@ export const hardcodedColorsRule: AuditRule = {
     // Build reverse map of hex -> token path for suggestions
     const colorMap = new Map<string, string>();
     for (const t of tokens) {
-      if (t.category === 'color' && t.resolvedValue.startsWith('#')) {
+      if (t.category === 'color' && typeof t.resolvedValue === 'string' && t.resolvedValue.startsWith('#')) {
         colorMap.set(t.resolvedValue.toLowerCase(), t.path);
       }
     }

@@ -52,6 +52,9 @@ export async function POST(request: Request) {
       .where(eq(tokens.designSystemId, designSystemId));
 
     const flatExisting: FlatToken[] = existingDbTokens.map((t: any) => ({
+      id: t.id,
+      persistentId: t.persistentId,
+      originSourceId: t.originSourceId,
       name: t.name,
       path: t.path,
       category: t.category,
@@ -79,14 +82,26 @@ export async function POST(request: Request) {
           deletedCount++;
         }
 
-        // 2. Upsert resolved incoming tokens
+        const defaultBrandId = `brand-default-${designSystemId}`;
+        const defaultVersionId = `ver-draft-${designSystemId}`;
+
+        // 2. Upsert resolved incoming tokens with stable persistent identity
         for (const token of resolvedIncoming) {
-          const tokenId = `tok-${token.path.replace(/\./g, '-')}`;
+          const tokenId = token.id || `tok-${token.path.replace(/\./g, '-')}`;
+          const existing = flatExisting.find(
+            (e) => (token.originSourceId && e.originSourceId === token.originSourceId) || e.path === token.path
+          );
+          const persistentId = existing?.persistentId || token.persistentId || `pid-${token.path.replace(/\./g, '-')}`;
+
           await tx
             .insert(tokens)
             .values({
               id: tokenId,
+              persistentId,
               designSystemId,
+              versionId: defaultVersionId,
+              brandId: defaultBrandId,
+              originSourceId: token.originSourceId || null,
               name: token.name,
               path: token.path,
               category: token.category,
@@ -100,6 +115,8 @@ export async function POST(request: Request) {
             .onConflictDoUpdate({
               target: tokens.id,
               set: {
+                persistentId,
+                originSourceId: token.originSourceId || null,
                 rawValue: token.rawValue,
                 resolvedValue: token.resolvedValue,
                 isAlias: token.isAlias,

@@ -1,5 +1,5 @@
 import { getDb } from './index';
-import { workspaces, projects, designSystems, tokens, components, releases, assets, docPages } from './schema';
+import { workspaces, projects, designSystems, designSystemVersions, brands, tokens, components, releases, assets, docPages } from './schema';
 import { parseDTCGTree } from '../core/tokens/parser';
 import { resolveTokenAliases } from '../core/tokens/resolver';
 
@@ -9,6 +9,8 @@ export async function seedDatabase(customDb?: any) {
   const workspaceId = 'ws-acme-corp';
   const projectId = 'proj-core-web';
   const designSystemId = 'ds-nova-design';
+  const brandId = `brand-default-${designSystemId}`;
+  const versionId = `ver-draft-${designSystemId}`;
 
   // 1. Create Workspace
   await db.insert(workspaces).values({
@@ -32,6 +34,24 @@ export async function seedDatabase(customDb?: any) {
     name: 'Nova Design System',
     version: '1.2.0',
     description: 'Production design system for Acme web and mobile applications',
+  }).onConflictDoNothing();
+
+  // 3b. Create Default Brand and Draft Version Container
+  await db.insert(brands).values({
+    id: brandId,
+    designSystemId,
+    name: 'Nova Default Brand',
+    codeName: 'default',
+    isDefault: true,
+  }).onConflictDoNothing();
+
+  await db.insert(designSystemVersions).values({
+    id: versionId,
+    designSystemId,
+    name: 'Draft',
+    description: 'Active working draft container for Nova Design System',
+    isDraft: true,
+    isReadOnly: false,
   }).onConflictDoNothing();
 
   // 4. Sample W3C DTCG Token Tree
@@ -106,9 +126,13 @@ export async function seedDatabase(customDb?: any) {
 
   for (const token of resolved.tokens) {
     const tokenId = `tok-${token.path.replace(/\./g, '-')}`;
+    const persistentId = `pid-${token.path.replace(/\./g, '-')}`;
     await db.insert(tokens).values({
       id: tokenId,
+      persistentId: token.persistentId || persistentId,
       designSystemId,
+      versionId,
+      brandId,
       name: token.name,
       path: token.path,
       category: token.category,

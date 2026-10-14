@@ -24,21 +24,83 @@ export const designSystems = pgTable('design_systems', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const tokens = pgTable('tokens', {
+export const designSystemVersions = pgTable('design_system_versions', {
   id: text('id').primaryKey(),
   designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  isDraft: boolean('is_draft').default(false).notNull(),
+  isReadOnly: boolean('is_read_only').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const brands = pgTable('brands', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  codeName: text('code_name').notNull(),
+  description: text('description'),
+  isDefault: boolean('is_default').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const tokens = pgTable('tokens', {
+  id: text('id').primaryKey(),
+  persistentId: text('persistent_id'),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  versionId: text('version_id').references(() => designSystemVersions.id, { onDelete: 'cascade' }),
+  brandId: text('brand_id').references(() => brands.id, { onDelete: 'set null' }),
+  originSourceId: text('origin_source_id'),
   name: text('name').notNull(),
   path: text('path').notNull(), // e.g. "color.brand.primary"
   category: text('category').notNull(), // color, spacing, typography, shadow, borderRadius, etc.
   type: text('type').notNull(), // DTCG $type: color, dimension, etc.
   rawValue: text('raw_value').notNull(), // can be "{color.primitive.blue.500}" or "#3b82f6"
   resolvedValue: text('resolved_value').notNull(), // resolved hex/px/etc.
+  isComposite: boolean('is_composite').default(false).notNull(),
+  rawValueJson: jsonb('raw_value_json'),
+  resolvedValueJson: jsonb('resolved_value_json'),
   isAlias: boolean('is_alias').default(false).notNull(),
   aliasTarget: text('alias_target'),
   isDeprecated: boolean('is_deprecated').default(false).notNull(),
+  isDeleted: boolean('is_deleted').default(false).notNull(),
+  deletedAt: timestamp('deleted_at'),
   description: text('description'),
   extensions: jsonb('extensions'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const themes = pgTable('themes', {
+  id: text('id').primaryKey(),
+  persistentId: text('persistent_id'),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  versionId: text('version_id').references(() => designSystemVersions.id, { onDelete: 'cascade' }),
+  brandId: text('brand_id').references(() => brands.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  codeName: text('code_name').notNull(),
+  description: text('description'),
+  parentThemeId: text('parent_theme_id'),
+  isDefault: boolean('is_default').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const tokenOverrides = pgTable('token_overrides', {
+  id: text('id').primaryKey(),
+  themeId: text('theme_id').notNull().references(() => themes.id, { onDelete: 'cascade' }),
+  tokenPersistentId: text('token_persistent_id'),
+  tokenPath: text('token_path').notNull(),
+  rawValue: text('raw_value').notNull(),
+  resolvedValue: text('resolved_value').notNull(),
+  rawValueJson: jsonb('raw_value_json'),
+  resolvedValueJson: jsonb('resolved_value_json'),
+  isComposite: boolean('is_composite').default(false).notNull(),
+  isAlias: boolean('is_alias').default(false).notNull(),
+  aliasTarget: text('alias_target'),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const components = pgTable('components', {

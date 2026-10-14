@@ -104,6 +104,7 @@ export function mapFigmaVariablesToDTCG(
       resolvedValue,
       isAlias,
       aliasTarget,
+      originSourceId: variable.id || id,
       description: variable.description || undefined,
     });
   }

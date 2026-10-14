@@ -20,7 +20,7 @@ describe('Figma Variables Integration Engine', () => {
     const cyanToken = mapped.find((t) => t.path === 'color.primitive.cyan.500');
     expect(cyanToken).toBeDefined();
     expect(cyanToken?.category).toBe('color');
-    expect(cyanToken?.resolvedValue.startsWith('#')).toBe(true);
+    expect(typeof cyanToken?.resolvedValue === 'string' && cyanToken?.resolvedValue.startsWith('#')).toBe(true);
 
     const aliasToken = mapped.find((t) => t.path === 'color.brand.accent');
     expect(aliasToken).toBeDefined();

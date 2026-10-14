@@ -1,6 +1,8 @@
 import { FlatToken } from '../tokens/types';
 import { TokenDiffItem } from './types';
 
+const serializeVal = (v: any): string => (typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v ?? ''));
+
 export function computeTokenDiff(existingTokens: FlatToken[], incomingTokens: FlatToken[]): TokenDiffItem[] {
   const existingMap = new Map<string, FlatToken>();
   for (const t of existingTokens) {
@@ -16,23 +18,23 @@ export function computeTokenDiff(existingTokens: FlatToken[], incomingTokens: Fl
       diffItems.push({
         path: incoming.path,
         status: 'added',
-        newValue: incoming.resolvedValue || incoming.rawValue,
+        newValue: serializeVal(incoming.resolvedValue || incoming.rawValue),
         category: incoming.category,
       });
-    } else if (existing.rawValue !== incoming.rawValue) {
+    } else if (serializeVal(existing.rawValue) !== serializeVal(incoming.rawValue)) {
       diffItems.push({
         path: incoming.path,
         status: 'modified',
-        oldValue: existing.rawValue,
-        newValue: incoming.rawValue,
+        oldValue: serializeVal(existing.rawValue),
+        newValue: serializeVal(incoming.rawValue),
         category: incoming.category,
       });
     } else {
       diffItems.push({
         path: incoming.path,
         status: 'unchanged',
-        oldValue: existing.rawValue,
-        newValue: incoming.rawValue,
+        oldValue: serializeVal(existing.rawValue),
+        newValue: serializeVal(incoming.rawValue),
         category: incoming.category,
       });
     }
@@ -47,7 +49,7 @@ export function computeTokenDiff(existingTokens: FlatToken[], incomingTokens: Fl
       diffItems.push({
         path,
         status: 'removed',
-        oldValue: existing.rawValue,
+        oldValue: serializeVal(existing.rawValue),
         newValue: undefined,
         category: existing.category,
       });

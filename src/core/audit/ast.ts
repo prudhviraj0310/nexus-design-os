@@ -70,7 +70,7 @@ export function runBabelAstAudit(context: {
   const deprecatedMap = new Map<string, string | undefined>();
 
   for (const t of tokens) {
-    if (t.category === 'color' && t.resolvedValue?.startsWith('#')) {
+    if (t.category === 'color' && typeof t.resolvedValue === 'string' && t.resolvedValue.startsWith('#')) {
       colorMap.set(t.resolvedValue.toLowerCase(), t.path);
     }
     const varName = `--${t.path.replace(/\./g, '-')}`;
