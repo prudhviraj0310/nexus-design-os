@@ -4,6 +4,9 @@ import { POST as postDoc, DELETE as deleteDoc } from '../src/app/api/docs/route'
 import { POST as postComponent } from '../src/app/api/components/route';
 import { GET as getHealth } from '../src/app/api/health/route';
 import { GET as getExport } from '../src/app/api/export/route';
+import { DELETE as deleteGithubConnect } from '../src/app/api/github/connect/route';
+import { POST as postAudit } from '../src/app/api/audit/route';
+import { GET as getGithubRepos } from '../src/app/api/github/repos/route';
 import { resetEnvCache } from '../src/server/env';
 
 describe('Verification D: Security Hardening, Endpoint Protection & SVG Sanitization', () => {
@@ -76,6 +79,39 @@ describe('Verification D: Security Hardening, Endpoint Protection & SVG Sanitiza
       expect(data.code).toBe('UNAUTHORIZED');
     });
 
+    it('rejects unauthenticated DELETE /api/github/connect with 401', async () => {
+      const req = new Request('http://localhost:3000/api/github/connect', {
+        method: 'DELETE',
+      });
+
+      const res = await deleteGithubConnect(req);
+      expect(res.status).toBe(401);
+      const data = await res.json();
+      expect(data.code).toBe('UNAUTHORIZED');
+    });
+
+    it('rejects unauthenticated POST /api/audit with 401', async () => {
+      const req = new Request('http://localhost:3000/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'const a = 1;' }),
+      });
+
+      const res = await postAudit(req);
+      expect(res.status).toBe(401);
+      const data = await res.json();
+      expect(data.code).toBe('UNAUTHORIZED');
+    });
+
+    it('rejects unauthenticated GET /api/github/repos with 401', async () => {
+      const req = new Request('http://localhost:3000/api/github/repos');
+
+      const res = await getGithubRepos(req);
+      expect(res.status).toBe(401);
+      const data = await res.json();
+      expect(data.code).toBe('UNAUTHORIZED');
+    });
+
     it('authorizes requests with valid x-api-key', async () => {
       const req = new Request('http://localhost:3000/api/assets', {
         method: 'POST',
@@ -112,6 +148,38 @@ describe('Verification D: Security Hardening, Endpoint Protection & SVG Sanitiza
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
+    });
+
+    it('authorizes DELETE /api/github/connect with valid x-api-key', async () => {
+      const req = new Request('http://localhost:3000/api/github/connect', {
+        method: 'DELETE',
+        headers: {
+          'x-api-key': 'secret-api-key-test-long-enough-32-chars',
+        },
+      });
+
+      const res = await deleteGithubConnect(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.connected).toBe(false);
+    });
+
+    it('authorizes POST /api/audit with valid x-api-key', async () => {
+      const req = new Request('http://localhost:3000/api/audit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'secret-api-key-test-long-enough-32-chars',
+        },
+        body: JSON.stringify({ code: 'const primaryColor = "#3b82f6";' }),
+      });
+
+      const res = await postAudit(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.score).toBeDefined();
     });
   });
 

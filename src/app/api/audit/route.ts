@@ -3,9 +3,13 @@ import { getDb } from '@/db/index';
 import { tokens } from '@/db/schema';
 import { AuditEngine } from '@/core/audit/engine';
 import { FlatToken } from '@/core/tokens/types';
+import { validateApiAuth } from '@/server/auth';
 
 export async function POST(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const body = await request.json();
     const codeContent = body.codeContent || body.code;
     const filePath = body.filePath || body.filename || 'Component.tsx';

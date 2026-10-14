@@ -5,9 +5,13 @@ import {
   getInstallationAccessToken,
   getInstallationRepositories,
 } from '@/core/github/app';
+import { validateApiAuth } from '@/server/auth';
 
 export async function GET(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     // 1. Check if connected via GitHub App Installation
     const installation = getGitHubInstallation();
     let installationIdFromCookie: string | undefined;

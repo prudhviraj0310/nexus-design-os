@@ -302,4 +302,76 @@ describe('Verification B: GitHub Delivery Genuine Idempotency & Failure Scenario
     expect(result.pullRequestUrl).toBeNull();
     expect(result.error).toContain('Remote branch "nexus/failing-branch" has 1 of 2 files committed');
   });
+
+  // Scenario 5: Transient failure recovers on retry -> Expected: Complete delivery successfully
+  it('Scenario 5: Transient 500 network error recovers on retry -> delivery succeeds without aborting', async () => {
+    let transientAttempts = 0;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string, init?: any) => {
+      // Base branch ref
+      if (url.includes('/git/ref/heads/main')) {
+        return {
+          ok: true,
+          json: async () => ({ object: { sha: 'base-main-sha-001' } }),
+        };
+      }
+      // Create branch
+      if (url.includes('/git/refs') && init?.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({ ref: 'refs/heads/nexus/retry-branch' }),
+        };
+      }
+      // Query existing open PRs
+      if (url.includes('/pulls?') && (!init || init.method === 'GET')) {
+        return { ok: true, json: async () => [] };
+      }
+      // Create PR
+      if (url.endsWith('/pulls') && init?.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({ html_url: 'https://github.com/acme-corp/design-tokens-repo/pull/555' }),
+        };
+      }
+      // File checks
+      if (url.includes('/contents/') && (!init || init.method === 'GET')) {
+        return { ok: false, status: 404 };
+      }
+      // File commits: 1st attempt fails with 500, 2nd attempt succeeds!
+      if (init?.method === 'PUT') {
+        transientAttempts++;
+        if (transientAttempts === 1) {
+          return {
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error: Transient network drop',
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ commit: { sha: `commit-sha-${transientAttempts}` } }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    }) as any;
+
+    const result = await engine.deliver({
+      projectId: 'proj-scenario-5',
+      repoOwner: 'acme-corp',
+      repoName: 'design-tokens-repo',
+      newBranchName: 'nexus/retry-branch',
+      commitMessage: 'chore: retry delivery',
+      prTitle: 'PR with Retry Recovery',
+      prBody: 'PR Body',
+      files: sampleFiles,
+      githubToken: 'ghp_valid_test_token',
+      dryRun: false,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.partialFailure).toBeFalsy();
+    expect(transientAttempts).toBeGreaterThanOrEqual(3); // 2 attempts for file 1, 1 attempt for file 2
+    expect(result.filesCommitted).toEqual(['tokens.css', 'tokens.ts']);
+    expect(result.pullRequestUrl).toBe('https://github.com/acme-corp/design-tokens-repo/pull/555');
+  });
 });

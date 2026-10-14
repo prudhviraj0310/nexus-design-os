@@ -141,7 +141,8 @@ describe('GitHub Web Integration API Routes', () => {
 
   describe('DELETE /api/github/connect', () => {
     it('returns disconnected state and removes auth session', async () => {
-      const res = await deleteConnect();
+      const req = new Request('http://localhost:3000/api/github/connect', { method: 'DELETE' });
+      const res = await deleteConnect(req);
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);

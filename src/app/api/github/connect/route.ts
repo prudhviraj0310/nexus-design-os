@@ -7,6 +7,8 @@ import {
   getInstallationRepositories,
   clearGitHubInstallation,
 } from '@/core/github/app';
+import { validateApiAuth } from '@/server/auth';
+
 
 export async function GET(request: Request) {
   try {
@@ -121,6 +123,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     const body = await request.json();
     const token = body.token?.trim();
 
@@ -177,8 +182,11 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+
     clearGitHubInstallation();
 
     const response = NextResponse.json({

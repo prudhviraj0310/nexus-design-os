@@ -167,21 +167,51 @@ export class GitHubDeliveryEngine {
           continue;
         }
 
-        const putRes = await fetch(
-          `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${file.filename}`,
-          {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify({
-              message: `${commitMessage}: ${file.filename}`,
-              content: Buffer.from(file.content).toString('base64'),
-              branch: newBranchName,
-              ...(fileSha ? { sha: fileSha } : {}),
-            }),
-          }
-        );
+        let putRes: Response | null = null;
+        let commitError: string | null = null;
+        const maxPutRetries = 2; // up to 3 attempts total
 
-        if (!putRes.ok) {
+        for (let attempt = 0; attempt <= maxPutRetries; attempt++) {
+          try {
+            putRes = await fetch(
+              `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${file.filename}`,
+              {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                  message: `${commitMessage}: ${file.filename}`,
+                  content: Buffer.from(file.content).toString('base64'),
+                  branch: newBranchName,
+                  ...(fileSha ? { sha: fileSha } : {}),
+                }),
+              }
+            );
+
+            if (putRes.ok) {
+              commitError = null;
+              break;
+            }
+
+            // Retry on transient rate limiting (429) or server errors (5xx)
+            if ((putRes.status === 429 || putRes.status >= 500) && attempt < maxPutRetries) {
+              const retryAfter = putRes.headers.get('Retry-After');
+              const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 5000) : (attempt + 1) * 200;
+              await new Promise((resolve) => setTimeout(resolve, delayMs));
+              continue;
+            }
+
+            commitError = `${putRes.status} ${putRes.statusText}`;
+            break;
+          } catch (err: any) {
+            commitError = err.message || String(err);
+            if (attempt < maxPutRetries) {
+              await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 200));
+              continue;
+            }
+          }
+        }
+
+        if (!putRes || !putRes.ok) {
           return {
             success: false,
             dryRun: false,
@@ -191,7 +221,7 @@ export class GitHubDeliveryEngine {
             commitSha: null,
             filesCommitted: committedFiles,
             diffSummary,
-            error: `Failed to commit file "${file.filename}" (${putRes.status} ${putRes.statusText}). Remote branch "${newBranchName}" has ${committedFiles.length} of ${files.length} files committed.`,
+            error: `Failed to commit file "${file.filename}" (${commitError || 'Unknown Error'}). Remote branch "${newBranchName}" has ${committedFiles.length} of ${files.length} files committed.`,
           };
         }
 
