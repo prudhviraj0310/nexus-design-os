@@ -57,7 +57,11 @@ import {
   Lock,
   LogOut,
   Image as ImageIcon,
+  Boxes,
+  Upload,
 } from 'lucide-react';
+import { ComponentPreview } from '@/components/ComponentPreview';
+import { Swatch } from '@/components/Swatch';
 
 // Brand & Integration SVG Helpers using cloned official assets
 function IntegrationLogo({ name, size = 18, className = '' }: { name: string; size?: number; className?: string }) {
@@ -960,24 +964,23 @@ Endpoint: \`${mcpEndpointUrl}\`
       {/* 1. MAIN FLOATING WORKSPACE SHELL (Payno / Orbix aesthetic) */}
       <div className="nexus-shell w-full max-w-[1520px] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden relative shadow-2xl">
         {/* TOP WORKSPACE HEADER BAR */}
-        <header className="h-16 px-5 sm:px-6 flex items-center justify-between border-b border-[#e2e8f0]/80 bg-white/80 backdrop-blur-md flex-shrink-0 z-20">
-          {/* Left: Brand Pill & Design System Status */}
+        <header className="h-16 px-6 flex items-center justify-between border-b border-[#e2e8f0]/80 bg-white/70 backdrop-blur-md flex-shrink-0 z-20">
+          {/* Left: Brand Pill matching Lovable AppShell */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveNav('overview')}
-              className="flex items-center gap-2.5 bg-[#0f172a] hover:bg-[#1e293b] text-white px-3.5 py-1.5 rounded-full shadow-sm transition-all"
+              className="flex items-center gap-3 cursor-pointer group text-left border-0 bg-transparent p-0"
             >
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#3b82f6] to-[#60a5fa] text-[11px] font-black flex items-center justify-center text-white">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-base font-bold text-primary-foreground shadow-sm group-hover:scale-105 transition-transform">
                 N
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-bold tracking-tight text-[#0f172a]">nexus</span>
+                <span className="text-[11px] font-mono font-semibold text-[#64748b] bg-white/90 px-2 py-0.5 rounded-full border border-[#e2e8f0]">
+                  v1.3.0
+                </span>
               </div>
-              <span className="text-xs font-bold tracking-tight">nexus</span>
             </button>
-
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-white/90 border border-[#e2e8f0] rounded-full text-xs">
-              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
-              <span className="font-semibold text-[#0f172a]">Nova Design System</span>
-              <span className="text-[10px] text-[#64748b] bg-[#f1f5f9] px-1.5 py-0.5 rounded font-mono">v1.3.0</span>
-            </div>
           </div>
 
           {/* Center: Global Search Bar */}
@@ -989,48 +992,30 @@ Endpoint: \`${mcpEndpointUrl}\`
                 placeholder="Search tokens, components, docs, pipelines..."
                 value={tokenSearch}
                 onChange={(e) => setTokenSearch(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-4 py-1.5 rounded-full text-xs text-[#0f172a] placeholder-[#94a3b8] focus:bg-white focus:outline-none focus:border-[#2563eb] transition-all"
+                className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-4 py-1.5 rounded-full text-xs text-[#0f172a] placeholder-[#94a3b8] focus:bg-white focus:outline-none focus:border-[#2563eb] transition-all shadow-2xs"
               />
             </div>
           </div>
 
-          {/* Right: Quick Action Pill Buttons, Notifications & User Avatar */}
-          <div className="flex items-center gap-2.5">
-            {/* Quick Add Token Button */}
+          {/* Right: Active Section Glass Pill, Add Token, Notifications & Profile */}
+          <div className="flex items-center gap-3">
+            <div className="glass px-4 py-1.5 text-xs font-semibold text-[#475569] tracking-wide hidden sm:block">
+              {activeNav === 'overview' ? 'Overview' : activeNav === 'tokens' ? 'Design Tokens' : activeNav === 'components' ? 'Components' : activeNav === 'docs' ? 'Living Docs' : activeNav === 'automation' ? 'Code Export' : activeNav === 'audit' ? 'Compliance Audit' : activeNav === 'releases' ? 'Releases' : activeNav === 'figma' ? 'Figma Sync' : activeNav === 'assets' ? 'Vector Assets' : 'AI Contexts'}
+            </div>
+
             <button
               onClick={() => setShowAddModal(true)}
-              className="btn-primary text-xs py-1.5 px-3 rounded-full flex items-center gap-1.5 shadow-xs"
+              className="btn-primary text-xs py-1.5 px-3.5 rounded-full flex items-center gap-1.5 shadow-xs"
             >
               <Plus size={13} />
               <span className="hidden sm:inline">Add Token</span>
             </button>
 
-            {/* Quick Export Code Button */}
-            <button
-              onClick={() => setActiveNav('automation')}
-              className="btn-secondary text-xs py-1.5 px-3 rounded-full flex items-center gap-1.5"
-            >
-              <Download size={13} className="text-[#64748b]" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
-
-            {/* Notifications Button */}
-            <button
-              type="button"
-              onClick={() => showUiNotice('All 31 tokens and 6 components in sync with live database.')}
-              aria-label="Notifications"
-              className="w-9 h-9 rounded-full bg-white border border-[#e2e8f0] flex items-center justify-center text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8fafc] shadow-xs transition-colors relative"
-            >
-              <Bell size={15} />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#3b82f6]" />
-            </button>
-
-            {/* User Avatar Circle */}
             <button
               type="button"
               onClick={() => setShowAuthModal(true)}
               title="Click to manage credentials"
-              className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#0f172a] to-[#334155] border-2 border-white shadow-sm flex items-center justify-center text-xs font-bold text-white tracking-wider"
+              className="w-9 h-9 rounded-full bg-primary text-primary-foreground shadow-sm flex items-center justify-center text-xs font-bold tracking-wider hover:opacity-90 transition-opacity"
             >
               PR
             </button>
@@ -1040,20 +1025,20 @@ Endpoint: \`${mcpEndpointUrl}\`
         {/* WORKSPACE BODY (SLIM ICON RAIL + MAIN CONTENT AREA) */}
         <div className="flex-1 flex overflow-hidden min-h-0 relative">
           {/* 2. SLIM VERTICAL ICON RAIL */}
-          <nav className="nexus-rail" aria-label="Main Navigation">
+          <nav className="nexus-pill-nav my-2 ml-4 flex-shrink-0" aria-label="Main Navigation">
             {/* Primary Nav Items */}
-            <div className="flex flex-col items-center gap-2 w-full">
+            <div className="flex flex-col items-center gap-1.5 w-full">
               {[
-                { nav: 'overview' as const, label: 'Overview', icon: <Grid size={17} /> },
-                { nav: 'tokens' as const, label: 'Design Tokens', icon: <Layers size={17} />, count: tokens.length },
-                { nav: 'components' as const, label: 'Components', icon: <Box size={17} />, count: components.length },
-                { nav: 'assets' as const, label: 'Vector Assets', icon: <ImageIcon size={17} />, count: assetsList.length },
-                { nav: 'docs' as const, label: 'Living Docs', icon: <BookOpen size={17} />, count: docPagesList.length },
-                { nav: 'figma' as const, label: 'Figma Sync', icon: <IntegrationLogo name="figma" size={16} /> },
-                { nav: 'automation' as const, label: 'Code Automation', icon: <GitPullRequest size={17} /> },
-                { nav: 'audit' as const, label: 'AST Linter', icon: <ShieldCheck size={17} /> },
-                { nav: 'releases' as const, label: 'Releases', icon: <Tag size={17} />, count: releasesList.length },
-                { nav: 'contexts' as const, label: 'AI Contexts', icon: <Sparkles size={17} /> },
+                { nav: 'overview' as const, label: 'Overview', icon: <Grid size={16} /> },
+                { nav: 'tokens' as const, label: 'Design Tokens', icon: <Layers size={16} />, count: tokens.length },
+                { nav: 'components' as const, label: 'Components', icon: <Boxes size={16} />, count: components.length },
+                { nav: 'docs' as const, label: 'Living Docs', icon: <BookOpen size={16} />, count: docPagesList.length },
+                { nav: 'automation' as const, label: 'Code Export', icon: <Code2 size={16} /> },
+                { nav: 'audit' as const, label: 'Compliance Audit', icon: <ShieldCheck size={16} /> },
+                { nav: 'releases' as const, label: 'Releases', icon: <Tag size={16} />, count: releasesList.length },
+                { nav: 'figma' as const, label: 'Figma Sync', icon: <IntegrationLogo name="figma" size={15} /> },
+                { nav: 'assets' as const, label: 'Vector Assets', icon: <ImageIcon size={16} />, count: assetsList.length },
+                { nav: 'contexts' as const, label: 'AI Contexts', icon: <Sparkles size={16} /> },
               ].map((item) => {
                 const isActive = activeNav === item.nav;
                 return (
@@ -1063,7 +1048,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                     onClick={() => setActiveNav(item.nav)}
                     title={item.label}
                     aria-label={item.label}
-                    className={`nexus-rail-btn ${isActive ? 'active' : ''}`}
+                    className={`nexus-pill-btn ${isActive ? 'active' : ''}`}
                   >
                     {item.icon}
                     <span className="nexus-rail-tooltip">
@@ -1074,25 +1059,25 @@ Endpoint: \`${mcpEndpointUrl}\`
               })}
             </div>
 
-            {/* Bottom Utilities (Settings, Help, Auth) */}
-            <div className="flex flex-col items-center gap-2 w-full pt-3 border-t border-[#e2e8f0]/60">
+            {/* Bottom Utilities (Settings & Docs) */}
+            <div className="flex flex-col items-center gap-1.5 w-full pt-2 border-t border-[#e2e8f0]/80">
               <button
                 type="button"
                 onClick={() => setShowAuthModal(true)}
                 title="Settings & Credentials"
-                className="nexus-rail-btn"
+                className="nexus-pill-btn"
               >
-                <Settings size={16} />
+                <Settings size={15} />
                 <span className="nexus-rail-tooltip">Settings & Auth</span>
               </button>
               <button
                 type="button"
                 onClick={() => window.open('/docs', '_blank', 'noopener,noreferrer')}
                 title="Public Documentation Portal"
-                className="nexus-rail-btn"
+                className="nexus-pill-btn"
               >
-                <HelpCircle size={16} />
-                <span className="nexus-rail-tooltip">Documentation Portal</span>
+                <HelpCircle size={15} />
+                <span className="nexus-rail-tooltip">Documentation</span>
               </button>
             </div>
           </nav>
@@ -1121,368 +1106,314 @@ Endpoint: \`${mcpEndpointUrl}\`
             {/* ========================================================================= */}
             {activeNav === 'overview' && (
               <div className="space-y-6 max-w-7xl mx-auto">
-                {/* TOP ROW: Available Balance / Stats & Activity / Fast Delivery */}
-                <div className="nexus-grid-12">
-                  {/* CARD 1: Available Tokens (Available Balance in Payno) */}
-                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between text-xs font-semibold text-[#64748b]">
-                        <span className="flex items-center gap-1.5">
-                          <Database size={13} className="text-[#3b82f6]" />
-                          Available Design Tokens
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setBalanceVisible(!balanceVisible)}
-                          className="text-[#94a3b8] hover:text-[#0f172a] transition-colors p-1"
-                          title={balanceVisible ? 'Hide token count' : 'Show token count'}
-                        >
-                          <Eye size={14} />
-                        </button>
-                      </div>
-
-                      <div className="mt-3 flex items-baseline gap-2">
-                        <span className="text-3xl font-extrabold tracking-tight text-[#0f172a]">
-                          {balanceVisible ? `${tokens.length} Tokens` : '••••••••'}
-                        </span>
-                        <span className="text-[11px] font-semibold text-[#059669] bg-[#ecfdf5] px-2 py-0.5 rounded-full border border-[#a7f3d0]">
-                          Active
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#64748b] mt-1">
-                        Nova Design System • W3C DTCG Standard
-                      </p>
-                    </div>
-
-                    {/* Quick Actions (4 circular buttons in a row matching reference) */}
-                    <div className="mt-6 pt-5 border-t border-[#f1f5f9]">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] mb-3">
-                        Quick Actions
-                      </div>
-                      <div className="nexus-action-button-group">
-                        <button
-                          type="button"
-                          onClick={() => setShowAddModal(true)}
-                          className="nexus-quick-action-btn"
-                        >
-                          <div className="nexus-circle-icon">
-                            <Plus size={16} />
-                          </div>
-                          <span>Add Token</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExportFormat('css');
-                            setActiveNav('automation');
-                          }}
-                          className="nexus-quick-action-btn"
-                        >
-                          <div className="nexus-circle-icon">
-                            <Download size={15} />
-                          </div>
-                          <span>Export</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setActiveNav('figma')}
-                          className="nexus-quick-action-btn"
-                        >
-                          <div className="nexus-circle-icon">
-                            <IntegrationLogo name="figma" size={16} />
-                          </div>
-                          <span>Figma Sync</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setActiveNav('automation')}
-                          className="nexus-quick-action-btn"
-                        >
-                          <div className="nexus-circle-icon">
-                            <GitPullRequest size={15} />
-                          </div>
-                          <span>Deliver PR</span>
-                        </button>
-                      </div>
-                    </div>
+                {/* Page Header matching Lovable */}
+                <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl font-semibold tracking-tight text-[#0f172a]">Design system</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">Single source of truth — from tokens to shipped code.</p>
                   </div>
-
-                  {/* CARD 2: Stats & Activity Chart (Revenue/Expense/Activity in Payno) */}
-                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
-                          <span className="text-[11px] font-semibold text-[#64748b]">Total Releases</span>
-                          <div className="text-xl font-bold text-[#0f172a] mt-0.5">{releasesList.length || 21} Tags</div>
-                          <span className="text-[10px] text-[#059669] font-medium">+3 this month</span>
-                        </div>
-                        <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
-                          <span className="text-[11px] font-semibold text-[#64748b]">Living Docs</span>
-                          <div className="text-xl font-bold text-[#0f172a] mt-0.5">{docPagesList.length || 5} Guides</div>
-                          <span className="text-[10px] text-[#3b82f6] font-medium">100% WCAG AA</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between text-xs font-semibold text-[#64748b] mb-1">
-                          <span>System Query Activity</span>
-                          <span className="text-[11px] text-[#2563eb]">This Week</span>
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold text-[#0f172a]">12.4K</span>
-                          <span className="text-[11px] font-semibold text-[#059669]">↑ +8.2%</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Interactive weekly bar chart */}
-                    <div className="mt-4 pt-3 border-t border-[#f1f5f9]">
-                      <div className="flex h-20 items-end gap-2 px-1">
-                        {[
-                          { day: 'S', height: 45, count: '1.2k' },
-                          { day: 'M', height: 75, count: '2.4k' },
-                          { day: 'T', height: 60, count: '1.8k' },
-                          { day: 'W', height: 95, count: '3.1k', active: true },
-                          { day: 'T', height: 70, count: '2.1k' },
-                          { day: 'F', height: 85, count: '2.7k' },
-                          { day: 'S', height: 50, count: '1.5k' },
-                        ].map((item, idx) => (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative">
-                            <div
-                              className={`w-full rounded-md transition-all ${
-                                item.active ? 'bg-[#0f172a]' : 'bg-[#cbd5e1] group-hover:bg-[#94a3b8]'
-                              }`}
-                              style={{ height: `${item.height}%` }}
-                            />
-                            <span className={`text-[10px] ${item.active ? 'font-bold text-[#0f172a]' : 'text-[#94a3b8]'}`}>
-                              {item.day}
-                            </span>
-                            <span className="pointer-events-none absolute -top-7 px-1.5 py-0.5 rounded bg-[#0f172a] text-white text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                              {item.count}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CARD 3: Fast Delivery & Export (Send Money card in Payno) */}
-                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between text-xs font-semibold text-[#0f172a]">
-                        <span>Fast Code Delivery</span>
-                        <button
-                          type="button"
-                          onClick={() => setActiveNav('automation')}
-                          className="text-[11px] text-[#2563eb] hover:underline"
-                        >
-                          Configure
-                        </button>
-                      </div>
-
-                      {/* Target Destination Selector */}
-                      <div className="mt-3 p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-between">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-[#0f172a] text-white flex items-center justify-center shrink-0">
-                            <IntegrationLogo name="github" size={16} className="invert" />
-                          </div>
-                          <div className="min-w-0">
-                            <span className="block text-xs font-bold text-[#0f172a] truncate">{targetRepo}</span>
-                            <span className="block text-[10px] text-[#64748b]">Branch: {targetBranch}</span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveNav('automation')}
-                          className="text-[11px] font-semibold text-[#2563eb] hover:underline shrink-0"
-                        >
-                          Change
-                        </button>
-                      </div>
-
-                      {/* Exporter Format Dropdown */}
-                      <div className="mt-3">
-                        <label className="text-[11px] font-semibold text-[#64748b] block mb-1">
-                          Target Exporter Format
-                        </label>
-                        <select
-                          value={quickDeliveryFormat}
-                          onChange={(e) => setQuickDeliveryFormat(e.target.value)}
-                          className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-[#2563eb]"
-                        >
-                          <option value="tailwind">Tailwind CSS 4 (@theme CSS variables)</option>
-                          <option value="css">CSS Custom Properties (:root & dark mode)</option>
-                          <option value="typescript">TypeScript Tokens (type-safe constants)</option>
-                          <option value="swift">Swift / SwiftUI Structs (iOS)</option>
-                          <option value="kotlin">Kotlin Jetpack Compose (Android)</option>
-                          <option value="json">W3C DTCG Standard JSON</option>
-                        </select>
-                      </div>
-
-                      {/* Status estimate */}
-                      <div className="mt-3 flex items-center justify-between text-[11px] text-[#64748b]">
-                        <span>Delivery Protocol:</span>
-                        <span className="font-semibold text-[#059669]">Direct GitHub PR & Local</span>
-                      </div>
-                    </div>
-
-                    {/* Action Button */}
-                    <div className="mt-4">
-                      {quickDeliverySuccess && (
-                        <div className="mb-2 p-2 bg-[#ecfdf5] border border-[#a7f3d0] rounded-lg text-[11px] text-[#059669] font-medium truncate">
-                          {quickDeliverySuccess}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleQuickDeliver}
-                        disabled={quickDelivering}
-                        className="btn-primary w-full py-2.5 justify-center text-xs font-semibold rounded-xl"
-                      >
-                        {quickDelivering ? (
-                          <>
-                            <RefreshCw size={14} className="animate-spin" />
-                            <span>Delivering Tokens...</span>
-                          </>
-                        ) : (
-                          <>
-                            <GitPullRequest size={14} />
-                            <span>Deliver Tokens to Production</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModal(true)}
+                      className="btn-primary rounded-full px-4 py-2 flex items-center gap-1.5 text-xs font-semibold shadow-xs cursor-pointer"
+                    >
+                      <Plus size={14} /> New token
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveNav('tokens')}
+                      className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-[#475569] hover:bg-white transition-colors cursor-pointer"
+                    >
+                      <Upload size={13} /> Import JSON
+                    </button>
                   </div>
                 </div>
 
-                {/* BOTTOM ROW: Recent Activity / Active Pipelines / Visual Token Card */}
+                {/* ROW 1: Total Tokens / Unreleased Changes / Semantic Palette */}
                 <div className="nexus-grid-12">
-                  {/* CARD 4: Recent Activity (Recent transactions in Payno) */}
-                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
+                  {/* CARD 1: Total Tokens */}
+                  <section className="glass p-6 col-span-4 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#64748b] mb-4">
-                        <span>Recent Activity</span>
-                        <button type="button" onClick={() => setActiveNav('mcp-analytics')} className="text-[#2563eb] font-semibold text-[11px] hover:underline lowercase capitalize">
-                          View all
+                      <div className="flex items-center justify-between text-sm text-muted-foreground font-medium">
+                        <span className="flex items-center gap-2">
+                          <Layers className="h-4 w-4 text-primary" /> Total tokens
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('tokens')}
+                          className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
+                          aria-label="Open tokens"
+                          title="Open tokens studio"
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
                         </button>
                       </div>
 
-                      <div className="space-y-3">
-                        {[
-                          { title: 'Figma Variables Synced', detail: '31 tokens updated', time: '1h ago', icon: <IntegrationLogo name="figma" size={14} />, badge: '+31' },
-                          { title: 'Tokens Exported to Tailwind', detail: 'tailwind.tokens.js', time: '15m ago', icon: <Code2 size={14} className="text-[#2563eb]" />, badge: 'CSS' },
-                          { title: 'MCP Context Query', detail: 'Claude Code Agent', time: '2m ago', icon: <CheckCircle2 size={14} className="text-[#10b981]" />, badge: 'AI' },
-                          { title: 'Delivery PR Created', detail: 'Branch: main', time: '3h ago', icon: <GitPullRequest size={14} className="text-[#6366f1]" />, badge: 'PR #104' },
-                          { title: 'AST Compliance Passed', detail: '0 hardcoded violations', time: '5h ago', icon: <ShieldCheck size={14} className="text-[#059669]" />, badge: '100%' },
-                        ].map((activity, idx) => (
-                          <div key={idx} className="flex items-center justify-between py-1.5 border-b border-[#f1f5f9] last:border-0">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-7 h-7 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center shrink-0">
-                                {activity.icon}
-                              </div>
-                              <div className="min-w-0">
-                                <span className="block text-xs font-semibold text-[#0f172a] truncate">{activity.title}</span>
-                                <span className="block text-[10px] text-[#94a3b8]">{activity.detail} • {activity.time}</span>
-                              </div>
-                            </div>
-                            <span className="text-[11px] font-bold text-[#0f172a] shrink-0 bg-[#f1f5f9] px-2 py-0.5 rounded-md">
-                              {activity.badge}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                      <p className="mt-4 text-5xl font-semibold tracking-tight text-[#0f172a]">{tokens.length}</p>
+                      <p className="mt-2 inline-block rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground font-medium">
+                        {tokens.filter((t) => t.rawValue?.startsWith('{')).length} aliases · {tokens.filter((t) => !t.resolvedValue).length} broken
+                      </p>
 
-                  {/* CARD 5: Active Delivery Pipelines (Upcoming Payments in Payno) */}
-                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#64748b] mb-4">
-                        <span>Delivery Pipelines</span>
-                        <button type="button" onClick={() => setActiveNav('automation')} className="text-[#2563eb] font-semibold text-[11px] hover:underline lowercase capitalize">
-                          View all
+                      <p className="mt-6 text-sm font-medium text-[#0f172a]">Quick actions</p>
+                      <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveNav('tokens');
+                            setShowAddModal(true);
+                          }}
+                          className="flex flex-col items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="grid h-11 w-11 place-items-center rounded-full border border-[#e2e8f0] bg-white group-hover:bg-[#0f172a] group-hover:text-white transition-all shadow-xs">
+                            <Upload className="h-4 w-4" />
+                          </span>
+                          <span className="text-[11px] font-semibold text-[#475569]">Import</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('automation')}
+                          className="flex flex-col items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="grid h-11 w-11 place-items-center rounded-full border border-[#e2e8f0] bg-white group-hover:bg-[#0f172a] group-hover:text-white transition-all shadow-xs">
+                            <Code2 className="h-4 w-4" />
+                          </span>
+                          <span className="text-[11px] font-semibold text-[#475569]">Export</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('components')}
+                          className="flex flex-col items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="grid h-11 w-11 place-items-center rounded-full border border-[#e2e8f0] bg-white group-hover:bg-[#0f172a] group-hover:text-white transition-all shadow-xs">
+                            <Boxes className="h-4 w-4" />
+                          </span>
+                          <span className="text-[11px] font-semibold text-[#475569]">Components</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('releases')}
+                          className="flex flex-col items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="grid h-11 w-11 place-items-center rounded-full border border-[#e2e8f0] bg-white group-hover:bg-[#0f172a] group-hover:text-white transition-all shadow-xs">
+                            <Tag className="h-4 w-4" />
+                          </span>
+                          <span className="text-[11px] font-semibold text-[#475569]">Release</span>
                         </button>
                       </div>
+                    </div>
 
-                      <div className="space-y-3">
+                    <div className="mt-6 pt-4 border-t border-[#f1f5f9]">
+                      <p className="text-sm font-medium text-[#0f172a] mb-2">Groups</p>
+                      <ul className="divide-y divide-[#f1f5f9]">
+                        {Object.entries(
+                          tokens.reduce<Record<string, number>>((acc, t) => {
+                            const g = t.category || t.name.split('.')[0] || 'other';
+                            acc[g] = (acc[g] || 0) + 1;
+                            return acc;
+                          }, {})
+                        ).map(([g, count]) => (
+                          <li key={g} className="flex justify-between py-1.5 text-xs">
+                            <span className="capitalize font-medium text-[#475569]">{g}</span>
+                            <span className="text-muted-foreground font-semibold">{count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </section>
+
+                  {/* CARD 2: Unreleased Changes */}
+                  <section className="glass p-6 col-span-4 flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground font-medium">Unreleased changes</p>
+                      <p className="mt-3 text-4xl font-semibold text-[#0f172a]">3</p>
+                      <div className="mt-3 flex gap-2 text-xs font-semibold">
+                        <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-success">+2 added</span>
+                        <span className="rounded-full bg-muted px-2.5 py-0.5 text-[#475569]">~1 changed</span>
+                        <span className="rounded-full bg-danger-soft px-2.5 py-0.5 text-destructive">−0 removed</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-8">
+                      <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] mb-4 text-xs text-[#64748b]">
+                        <span className="font-semibold text-[#0f172a] block mb-0.5">Automated Versioning</span>
+                        Snapshot all design tokens and generate semver release notes.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveNav('releases')}
+                        className="block w-full rounded-full bg-primary py-2.5 text-center text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                      >
+                        Publish after v1.3.0
+                      </button>
+                    </div>
+                  </section>
+
+                  {/* CARD 3: Semantic Palette */}
+                  <section className="glass p-6 col-span-4 flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground font-medium">Semantic palette</p>
+                      <p className="text-xs text-[#64748b] mt-0.5">Live values resolved from your token dictionary</p>
+
+                      <div className="mt-4 grid grid-cols-4 gap-3 text-center">
                         {[
-                          { title: 'Figma Webhook Sync', desc: 'Auto-sync on variable publish', status: 'Active', color: '#10b981' },
-                          { title: 'Tailwind CSS 4 @theme', desc: 'Zero-config modern CSS engine', status: 'Ready', color: '#3b82f6' },
-                          { title: 'iOS SwiftUI SDK Packager', desc: 'Native Tokens.swift generation', status: 'Ready', color: '#6366f1' },
-                          { title: 'Android Compose Packager', desc: 'Jetpack Compose token objects', status: 'Ready', color: '#8b5cf6' },
-                        ].map((pipeline, idx) => (
-                          <div key={idx} className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-between">
-                            <div>
-                              <span className="block text-xs font-bold text-[#0f172a]">{pipeline.title}</span>
-                              <span className="block text-[10px] text-[#64748b] mt-0.5">{pipeline.desc}</span>
-                            </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#e2e8f0] text-[#0f172a] flex items-center gap-1 shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: pipeline.color }} />
-                              {pipeline.status}
-                            </span>
+                          { name: 'primary', color: '#2563eb' },
+                          { name: 'surface', color: '#ffffff' },
+                          { name: 'text', color: '#0f172a' },
+                          { name: 'success', color: '#10b981' },
+                        ].map((c) => (
+                          <div key={c.name} className="flex flex-col items-center">
+                            <Swatch value={c.color} className="h-12 w-full rounded-xl" />
+                            <p className="mt-1.5 truncate text-[11px] font-medium text-muted-foreground">{c.name}</p>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  </div>
 
-                  {/* CARD 6: Visual Live Token Card (Credit Card widget in Payno) */}
-                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#1e1b4b] text-white border-0 shadow-xl relative overflow-hidden">
-                    {/* Subtle decorative glow */}
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
-                    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
-
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-md bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-xs">
-                            N
-                          </div>
-                          <span className="text-xs font-bold tracking-wider uppercase text-white/90">Nova Design Tokens</span>
+                      <div className="mt-6 pt-4 border-t border-[#f1f5f9] space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Base Scale</span>
+                          <span className="font-mono font-medium text-[#0f172a]">16px (1rem)</span>
                         </div>
-                        <span className="text-[10px] font-mono uppercase bg-white/10 px-2 py-0.5 rounded text-white/80">
-                          Live Preview
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Typography</span>
+                          <span className="font-medium text-[#0f172a]">Plus Jakarta Sans</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Border Radius</span>
+                          <span className="font-mono font-medium text-[#0f172a]">1.25rem (pill/card)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveNav('tokens')}
+                      className="mt-4 text-xs font-semibold text-primary hover:underline text-left cursor-pointer"
+                    >
+                      Explore all 28 tokens →
+                    </button>
+                  </section>
+                </div>
+
+                {/* ROW 2: Components Preview / Pipelines / Fast Code Delivery */}
+                <div className="nexus-grid-12">
+                  {/* CARD 4: Components */}
+                  <section className="glass p-6 col-span-4 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center text-sm mb-3">
+                        <span className="font-medium text-[#0f172a]">Components</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('components')}
+                          className="text-xs text-muted-foreground hover:text-primary font-medium cursor-pointer"
+                        >
+                          View all
+                        </button>
+                      </div>
+
+                      <ul className="space-y-3">
+                        {(components.slice(0, 4).length ? components.slice(0, 4) : [
+                          { id: 'btn-1', name: 'Button', status: 'stable' },
+                          { id: 'card-1', name: 'Card', status: 'stable' },
+                          { id: 'badge-1', name: 'Badge', status: 'beta' },
+                          { id: 'input-1', name: 'Input', status: 'stable' },
+                        ]).map((c: any) => (
+                          <li key={c.id || c.name} className="flex items-center justify-between py-1 border-b border-[#f1f5f9] last:border-0">
+                            <span className="flex items-center gap-3">
+                              <span className="grid h-8 w-8 place-items-center rounded-full bg-muted text-[#475569]">
+                                <Boxes className="h-4 w-4" />
+                              </span>
+                              <span className="text-xs font-semibold text-[#0f172a]">{c.name}</span>
+                            </span>
+                            <span className="text-[10px] font-semibold capitalize px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              {c.status || 'stable'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveNav('components')}
+                      className="mt-4 w-full py-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-xs font-semibold text-[#475569] transition-colors border border-[#e2e8f0] cursor-pointer"
+                    >
+                      Open Component Catalog
+                    </button>
+                  </section>
+
+                  {/* CARD 5: Pipelines */}
+                  <section className="relative flex flex-col justify-between overflow-hidden rounded-3xl bg-gradient-card p-6 text-primary-foreground shadow-lg col-span-4">
+                    <div>
+                      <p className="text-sm font-bold text-primary tracking-wide">Pipelines</p>
+                      <p className="mt-4 text-2xl font-semibold">6 targets</p>
+                      <p className="text-sm opacity-90 mt-1">CSS · Tailwind · TS · Swift · Kotlin · JSON</p>
+                    </div>
+
+                    <div className="mt-8">
+                      <p className="text-xs opacity-80 mb-3">Instant compilation for web, iOS, Android, and design tools.</p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveNav('automation')}
+                        className="self-start rounded-full bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white transition-colors shadow-xs cursor-pointer"
+                      >
+                        Generate code
+                      </button>
+                    </div>
+                  </section>
+
+                  {/* CARD 6: Fast Code Delivery */}
+                  <section className="glass p-6 col-span-4 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-xs font-semibold text-[#0f172a]">
+                        <span className="font-bold">Fast Code Delivery</span>
+                        <span className="text-[11px] text-[#2563eb]">GitHub Engine</span>
+                      </div>
+
+                      <div className="mt-3 p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-between">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <IntegrationLogo name="github" size={18} />
+                          <div className="min-w-0">
+                            <span className="block text-xs font-bold text-[#0f172a] truncate">adcn/web-platform-core</span>
+                            <span className="block text-[10px] text-[#64748b]">Branch: main</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#10b981] bg-[#ecfdf5] border border-[#a7f3d0] px-2 py-0.5 rounded-full">
+                          Connected
                         </span>
                       </div>
 
-                      {/* Live Token Swatches */}
-                      <div className="my-5 p-3.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-white/70">Primary Blue</span>
-                          <span className="font-mono text-white font-semibold">#3b82f6</span>
+                      <div className="mt-4 space-y-1.5 text-xs text-[#64748b]">
+                        <div className="flex justify-between">
+                          <span>Target Exporter</span>
+                          <span className="font-mono font-semibold text-[#0f172a]">Tailwind CSS 4</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-[#3b82f6] shadow-sm border border-white/20" />
-                          <div className="w-7 h-7 rounded-lg bg-[#2563eb] shadow-sm border border-white/20" />
-                          <div className="w-7 h-7 rounded-lg bg-[#0f172a] shadow-sm border border-white/20" />
-                          <div className="w-7 h-7 rounded-lg bg-[#f1f5f9] shadow-sm border border-white/20" />
+                        <div className="flex justify-between">
+                          <span>Destination</span>
+                          <span className="font-mono font-semibold text-[#0f172a]">styles/tokens.css</span>
                         </div>
-                      </div>
-
-                      <div className="space-y-1 text-xs">
-                        <div className="text-[11px] text-white/70">Typography & Scale</div>
-                        <div className="font-semibold text-white tracking-tight">Plus Jakarta Sans • 16px Base</div>
                       </div>
                     </div>
 
-                    <div className="mt-5 pt-3 border-t border-white/10 relative z-10 flex items-center justify-between">
-                      <span className="text-[10px] text-white/60 font-mono">DTCG v1.3.0</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          triggerDownload('nova-tokens.json', JSON.stringify(tokens, null, 2), 'application/json');
-                          showUiNotice('Downloaded nova-tokens.json');
-                        }}
-                        className="text-[11px] font-semibold bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-                      >
-                        <Download size={12} />
-                        <span>Download JSON</span>
-                      </button>
-                    </div>
-                  </div>
+                    <button
+                      type="button"
+                      onClick={handleQuickDeliver}
+                      disabled={quickDelivering}
+                      className="mt-6 w-full btn-primary rounded-full py-2.5 text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                    >
+                      {quickDelivering ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          <span>Delivering PR...</span>
+                        </>
+                      ) : (
+                        <>
+                          <GitPullRequest size={14} />
+                          <span>Deliver Tokens to GitHub</span>
+                        </>
+                      )}
+                    </button>
+                  </section>
                 </div>
               </div>
             )}

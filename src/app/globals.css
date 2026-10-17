@@ -1,6 +1,44 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
+  /* Lovable Design System (W3C DTCG / OKLCH Tokens) */
+  --radius: 1.25rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --background: oklch(0.955 0.008 255);
+  --foreground: oklch(0.2 0.03 265);
+  --card: oklch(0.985 0.004 255 / 0.82);
+  --card-foreground: oklch(0.2 0.03 265);
+  --popover: oklch(0.99 0.003 255);
+  --popover-foreground: oklch(0.2 0.03 265);
+  --primary: oklch(0.42 0.08 265);
+  --primary-foreground: oklch(0.98 0.005 255);
+  --secondary: oklch(0.93 0.012 255);
+  --secondary-foreground: oklch(0.28 0.05 265);
+  --muted: oklch(0.935 0.01 255);
+  --muted-foreground: oklch(0.55 0.025 260);
+  --accent: oklch(0.9 0.025 258);
+  --accent-foreground: oklch(0.28 0.05 265);
+  --destructive: oklch(0.6 0.17 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --success: oklch(0.62 0.12 160);
+  --success-soft: oklch(0.92 0.06 160);
+  --danger-soft: oklch(0.93 0.05 25);
+  --border: oklch(0.9 0.012 255);
+  --input: oklch(0.9 0.012 255);
+  --ring: oklch(0.55 0.08 265);
+  --code-bg: oklch(0.2 0.03 265);
+  --code-fg: oklch(0.9 0.02 255);
+  --gradient-glow: radial-gradient(60% 120% at 50% 0%, oklch(0.62 0.07 260 / 0.45), transparent 70%);
+  --gradient-card: linear-gradient(135deg, oklch(0.97 0.006 255) 0%, oklch(0.6 0.08 262) 100%);
+  --shadow-soft: 0 1px 2px oklch(0.3 0.03 265 / 0.04), 0 12px 32px -12px oklch(0.3 0.05 265 / 0.12);
+
   /* Supernova 2026 - Clean White Enterprise Design Tokens */
   --bg-app: #f8fafc;
   --bg-sidebar: #ffffff;
@@ -272,6 +310,137 @@ body {
   font-weight: 600 !important;
   color: #475569 !important;
 }
+
+/* ========================================================================= */
+/* LOVABLE DESIGN SYSTEM (GLASS, GLOW, PILL RAIL, OKLCH UTILITIES)           */
+/* ========================================================================= */
+
+.glass {
+  background: var(--card, oklch(0.985 0.004 255 / 0.82)) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--border, oklch(0.9 0.012 255)) !important;
+  border-radius: var(--radius-xl, 1.25rem) !important;
+  box-shadow: var(--shadow-soft, 0 1px 2px oklch(0.3 0.03 265 / 0.04), 0 12px 32px -12px oklch(0.3 0.05 265 / 0.12)) !important;
+}
+
+.bg-glow {
+  background-image: var(--gradient-glow) !important;
+}
+
+.bg-gradient-card {
+  background-image: var(--gradient-card) !important;
+}
+
+/* Floating Pill Nav Rail matching Lovable AppShell */
+.nexus-pill-nav {
+  position: sticky !important;
+  top: 1.5rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  padding: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 24px -4px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  height: fit-content !important;
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  align-items: center !important;
+  z-index: 30;
+}
+
+.nexus-pill-btn {
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  border-radius: 9999px !important;
+  color: var(--muted-foreground, #64748b) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  outline: none !important;
+  padding: 0 !important;
+}
+
+.nexus-pill-btn:hover {
+  background: var(--accent, #f1f5f9) !important;
+  color: var(--foreground, #0f172a) !important;
+}
+
+.nexus-pill-btn.active {
+  background: var(--primary, #34466e) !important;
+  color: var(--primary-foreground, #ffffff) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18) !important;
+}
+
+.nexus-pill-btn .nexus-rail-tooltip {
+  display: none !important;
+  position: absolute !important;
+  left: 50px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  z-index: 9999 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25) !important;
+}
+
+.nexus-pill-btn .nexus-rail-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent #0f172a transparent transparent;
+}
+
+.nexus-pill-btn:hover .nexus-rail-tooltip {
+  display: block !important;
+}
+
+/* Color & typography utility classes */
+.bg-primary { background-color: var(--primary) !important; }
+.text-primary { color: var(--primary) !important; }
+.text-primary-foreground { color: var(--primary-foreground) !important; }
+.bg-muted { background-color: var(--muted) !important; }
+.text-muted-foreground { color: var(--muted-foreground) !important; }
+.bg-card { background-color: var(--card) !important; }
+.text-card-foreground { color: var(--card-foreground) !important; }
+.bg-accent { background-color: var(--accent) !important; }
+.text-accent-foreground { color: var(--accent-foreground) !important; }
+.bg-success-soft { background-color: var(--success-soft) !important; }
+.text-success { color: var(--success) !important; }
+.bg-danger-soft { background-color: var(--danger-soft) !important; }
+.text-destructive { color: var(--destructive) !important; }
+.border-destructive { border-color: var(--destructive) !important; }
+.bg-code-bg { background-color: var(--code-bg) !important; }
+.text-code-fg { color: var(--code-fg) !important; }
+
+.rounded-4xl { border-radius: var(--radius-4xl, 2.25rem) !important; }
+.rounded-3xl { border-radius: var(--radius-3xl, 1.5rem) !important; }
+.rounded-2xl { border-radius: var(--radius-2xl, 1.25rem) !important; }
+.rounded-xl { border-radius: var(--radius-xl, 1rem) !important; }
+.rounded-lg { border-radius: var(--radius-lg, 0.75rem) !important; }
+.rounded-md { border-radius: var(--radius-md, 0.5rem) !important; }
+.rounded-sm { border-radius: var(--radius-sm, 0.25rem) !important; }
+.rounded-full { border-radius: 9999px !important; }
 
 .btn-primary {
   display: inline-flex;
