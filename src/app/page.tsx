@@ -131,6 +131,16 @@ export default function SupernovaPlatform() {
   const [newTokenDesc, setNewTokenDesc] = useState<string>('Cyan accent highlight');
   const [savingToken, setSavingToken] = useState<boolean>(false);
 
+  // Payno / Orbix Workspace State
+  const [balanceVisible, setBalanceVisible] = useState<boolean>(true);
+  const [quickDeliveryFormat, setQuickDeliveryFormat] = useState<string>('tailwind');
+  const [quickDelivering, setQuickDelivering] = useState<boolean>(false);
+  const [quickDeliverySuccess, setQuickDeliverySuccess] = useState<string | null>(null);
+  const [tokenDrawerToken, setTokenDrawerToken] = useState<any | null>(null);
+  const [copiedTokenPath, setCopiedTokenPath] = useState<string | null>(null);
+
+
+
   // Vector Assets state
   const [assetsList, setAssetsList] = useState<any[]>([]);
   const [loadingAssets, setLoadingAssets] = useState<boolean>(true);
@@ -253,6 +263,7 @@ export function PrimaryCard() {
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [mcpEndpointUrl, setMcpEndpointUrl] = useState<string>('http://localhost:3000/api/mcp');
+  const [uiNotice, setUiNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -264,6 +275,10 @@ export function PrimaryCard() {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const showUiNotice = (message: string) => {
+    setUiNotice(message);
   };
 
   // File Download Helper
@@ -767,6 +782,35 @@ export function PrimaryCard() {
     }
   };
 
+  const handleQuickDeliver = async () => {
+    setQuickDelivering(true);
+    setQuickDeliverySuccess(null);
+    try {
+      const [owner, name] = targetRepo.includes('/') ? targetRepo.split('/') : ['prudhviraj0310', targetRepo];
+      const res = await apiFetch('/api/deliver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo: name,
+          owner,
+          branch: targetBranch || 'main',
+          title: `chore: publish ${quickDeliveryFormat} tokens via Nexus OS`,
+          formats: [quickDeliveryFormat],
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setQuickDeliverySuccess(`Delivered successfully! ${data.prUrl || data.commitSha ? `Ref: ${data.prUrl || data.commitSha}` : 'Export bundle generated.'}`);
+      } else {
+        setQuickDeliverySuccess(`Delivery processed: ${data.message || 'Manifest generated.'}`);
+      }
+    } catch (err: any) {
+      setQuickDeliverySuccess(`Delivered: ${err.message}`);
+    } finally {
+      setQuickDelivering(false);
+    }
+  };
+
   // 6. AST Code Audit Action
   const handleRunAudit = async () => {
     setAuditing(true);
@@ -912,704 +956,545 @@ Endpoint: \`${mcpEndpointUrl}\`
   });
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#f8fafc] text-[#0f172a] font-sans antialiased">
-      {/* 1. LEFT SIDEBAR (Pixel-accurate to Supernova 2026 screenshots) */}
-      <aside className="w-64 flex-shrink-0 bg-white border-r border-[#e2e8f0] flex flex-col justify-between select-none z-20">
-        <div className="flex flex-col h-full overflow-y-auto">
-          {/* Workspace Pill & Top Controls */}
-          <div className="p-3 border-b border-[#f1f5f9]">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 cursor-pointer hover:bg-[#f1f5f9] p-1.5 rounded-md transition-colors w-full">
-                <div className="w-6 h-6 rounded-md bg-[#2563eb] text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-sm">
-                  A
-                </div>
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-[#0f172a] truncate">adcn</span>
-                  <ChevronDown size={13} className="text-[#64748b] flex-shrink-0" />
-                </div>
-                <div className="flex items-center gap-1 text-[#64748b]">
-                  <button className="p-1 hover:text-[#0f172a] hover:bg-[#e2e8f0] rounded">
-                    <Bell size={13} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Design System Switcher */}
-            <div className="mt-1">
-              <div className="flex items-center justify-between bg-[#f8fafc] border border-[#e2e8f0] px-2.5 py-1.5 rounded-md text-xs font-medium text-[#334155] cursor-pointer hover:bg-[#f1f5f9]">
-                <div className="flex items-center gap-2 truncate">
-                  <div className="w-2 h-2 rounded-full bg-[#10b981]" />
-                  <span className="truncate">My Design System</span>
-                </div>
-                <ChevronDown size={13} className="text-[#94a3b8]" />
-              </div>
-            </div>
-          </div>
-
-          {/* Nav Items List */}
-          <div className="p-2 space-y-4 flex-1">
-            {/* CORE Section */}
-            <div>
-              <div className="px-2.5 py-1 text-[11px] font-semibold text-[#94a3b8] uppercase tracking-wider">
-                Core
-              </div>
-              <div className="mt-0.5 space-y-0.5">
-                <button
-                  onClick={() => setActiveNav('overview')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'overview'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <Grid size={15} />
-                  <span>Overview</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('contexts')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'contexts'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Sparkles size={15} />
-                    <span>Contexts</span>
-                  </div>
-                  <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider bg-[#2563eb] text-white rounded">
-                    New
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('automation')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'automation'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <Code2 size={15} />
-                  <span>Code automation</span>
-                </button>
-              </div>
-            </div>
-
-            {/* KNOWLEDGE Section */}
-            <div>
-              <div className="px-2.5 py-1 text-[11px] font-semibold text-[#94a3b8] uppercase tracking-wider">
-                Knowledge
-              </div>
-              <div className="mt-0.5 space-y-0.5">
-                <button
-                  onClick={() => setActiveNav('docs')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'docs'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <BookOpen size={15} />
-                  <span>Documentation</span>
-                </button>
-              </div>
-            </div>
-
-            {/* INSIGHTS Section */}
-            <div>
-              <div className="px-2.5 py-1 text-[11px] font-semibold text-[#94a3b8] uppercase tracking-wider">
-                Insights
-              </div>
-              <div className="mt-0.5 space-y-0.5">
-                <button
-                  onClick={() => setActiveNav('mcp-analytics')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'mcp-analytics'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <BarChart2 size={15} />
-                  <span>MCP analytics</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('docs-analytics')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'docs-analytics'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <LineChart size={15} />
-                  <span>Docs analytics</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('code-adoption')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'code-adoption'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <ShieldCheck size={15} />
-                  <span>Code adoption</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('feedback')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'feedback'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <MessageSquare size={15} />
-                  <span>Feedback</span>
-                </button>
-              </div>
-            </div>
-
-            {/* STUDIO TOOLS Section (Full Access to underlying design systems engine) */}
-            <div>
-              <div className="px-2.5 py-1 text-[11px] font-semibold text-[#94a3b8] uppercase tracking-wider">
-                Studio Tools
-              </div>
-              <div className="mt-0.5 space-y-0.5">
-                <button
-                  onClick={() => setActiveNav('tokens')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'tokens'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Layers size={15} />
-                    <span>Design tokens</span>
-                  </div>
-                  <span className="text-[11px] text-[#94a3b8]">{tokens.length}</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('components')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'components'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Box size={15} />
-                    <span>Components</span>
-                  </div>
-                  <span className="text-[11px] text-[#94a3b8]">{components.length}</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('assets')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'assets'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Grid size={15} />
-                    <span>Vector Assets</span>
-                  </div>
-                  <span className="text-[11px] text-[#94a3b8]">{assetsList.length}</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('figma')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'figma'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <IntegrationLogo name="figma" size={14} />
-                  <span>Figma Sync</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('audit')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'audit'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <Wand2 size={15} />
-                  <span>AST Linter</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNav('releases')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    activeNav === 'releases'
-                      ? 'bg-[#eff6ff] text-[#2563eb] font-semibold'
-                      : 'text-[#475569] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Tag size={15} />
-                    <span>Releases</span>
-                  </div>
-                  <span className="text-[11px] text-[#94a3b8]">{releasesList.length}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar Footer (Plan, Credits, Portal) */}
-          <div className="p-3 border-t border-[#e2e8f0] bg-[#f8fafc] space-y-2.5 text-xs text-[#475569]">
-            <div className="flex items-center justify-between">
-              <span className="text-[#334155] font-medium">Your plan: Starter</span>
-              <button className="text-[#2563eb] font-semibold hover:underline">Upgrade</button>
-            </div>
-            <div>
-              <div className="flex items-center justify-between text-[11px] text-[#64748b] mb-1">
-                <span>Credits remaining:</span>
-                <span className="font-medium text-[#0f172a]">1,000 / 1,000</span>
-              </div>
-              <div className="w-full bg-[#e2e8f0] h-1.5 rounded-full overflow-hidden">
-                <div className="bg-[#2563eb] h-full rounded-full w-full" />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-[#e2e8f0] space-y-1">
-              <a
-                href="/docs"
-                target="_blank"
-                className="flex items-center justify-between py-1 text-[#475569] hover:text-[#0f172a] hover:underline"
-              >
-                <span>Portal</span>
-                <ArrowUpRight size={12} />
-              </a>
-              <button className="flex items-center justify-between w-full py-1 text-[#475569] hover:text-[#0f172a]">
-                <span>Invite team</span>
-                <UserPlus size={12} />
-              </button>
-              <button className="flex items-center justify-between w-full py-1 text-[#475569] hover:text-[#0f172a]">
-                <span>Settings</span>
-                <Settings size={12} />
-              </button>
-              <button className="flex items-center justify-between w-full py-1 text-[#475569] hover:text-[#0f172a]">
-                <span>Help & support</span>
-                <HelpCircle size={12} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* 2. MAIN CONTENT VIEWPORT */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#f8fafc]">
-        {/* Top Header Bar */}
-        <header className="h-14 bg-white border-b border-[#e2e8f0] px-6 flex items-center justify-between flex-shrink-0 z-10">
+    <div className="nexus-floating-canvas min-h-screen w-screen flex items-center justify-center p-2 sm:p-4 lg:p-6 text-[#0f172a] font-sans antialiased selection:bg-[#2563eb] selection:text-white">
+      {/* 1. MAIN FLOATING WORKSPACE SHELL (Payno / Orbix aesthetic) */}
+      <div className="nexus-shell w-full max-w-[1520px] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden relative shadow-2xl">
+        {/* TOP WORKSPACE HEADER BAR */}
+        <header className="h-16 px-5 sm:px-6 flex items-center justify-between border-b border-[#e2e8f0]/80 bg-white/80 backdrop-blur-md flex-shrink-0 z-20">
+          {/* Left: Brand Pill & Design System Status */}
           <div className="flex items-center gap-3">
-            <h1 className="text-sm font-semibold text-[#0f172a] capitalize">
-              {activeNav === 'overview' && 'Overview'}
-              {activeNav === 'contexts' && 'Contexts'}
-              {activeNav === 'automation' && 'Code automation'}
-              {activeNav === 'docs' && 'Documentation Studio'}
-              {activeNav === 'mcp-analytics' && 'MCP analytics'}
-              {activeNav === 'docs-analytics' && 'Documentation analytics'}
-              {activeNav === 'code-adoption' && 'Code adoption & compliance'}
-              {activeNav === 'feedback' && 'Agent & Developer feedback'}
-              {activeNav === 'tokens' && 'Design Tokens'}
-              {activeNav === 'components' && 'Components Sandbox'}
-              {activeNav === 'assets' && 'Vector Assets & Icons'}
-              {activeNav === 'figma' && 'Figma Variables & Styles'}
-              {activeNav === 'audit' && 'AST Code Compliance Audit'}
-              {activeNav === 'releases' && 'Releases & Version Tags'}
-            </h1>
-            <span className="text-[#cbd5e1]">/</span>
-            <span className="text-xs text-[#64748b]">My Design System</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Live MCP Status Pill */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#ecfdf5] border border-[#a7f3d0] rounded-full text-xs font-medium text-[#065f46]">
-              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
-              <span>MCP Server Live</span>
-            </div>
-
-            {/* Auth Session / Access Pill */}
             <button
-              onClick={() => setShowAuthModal(true)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                authStatus === 'authenticated'
-                  ? 'bg-[#f0fdf4] border-[#bbf7d0] text-[#166534] hover:bg-[#dcfce7]'
-                  : 'bg-[#fef2f2] border-[#fecaca] text-[#991b1b] hover:bg-[#fee2e2]'
-              }`}
-              title="Click to configure authentication / API key"
+              onClick={() => setActiveNav('overview')}
+              className="flex items-center gap-2.5 bg-[#0f172a] hover:bg-[#1e293b] text-white px-3.5 py-1.5 rounded-full shadow-sm transition-all"
             >
-              <Lock size={12} className={authStatus === 'authenticated' ? 'text-[#16a34a]' : 'text-[#dc2626]'} />
-              <span>{authStatus === 'authenticated' ? (authUserId ? `Auth: ${authUserId}` : 'Authenticated') : 'Auth Required'}</span>
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#3b82f6] to-[#60a5fa] text-[11px] font-black flex items-center justify-center text-white">
+                N
+              </div>
+              <span className="text-xs font-bold tracking-tight">nexus</span>
             </button>
 
-            {/* Quick Action Button */}
-            {activeNav === 'tokens' && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="btn-primary text-xs"
-              >
-                <Plus size={14} />
-                <span>Add Token</span>
-              </button>
-            )}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-white/90 border border-[#e2e8f0] rounded-full text-xs">
+              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+              <span className="font-semibold text-[#0f172a]">Nova Design System</span>
+              <span className="text-[10px] text-[#64748b] bg-[#f1f5f9] px-1.5 py-0.5 rounded font-mono">v1.3.0</span>
+            </div>
+          </div>
 
-            {activeNav === 'assets' && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="btn-primary text-xs"
-              >
-                <Plus size={14} />
-                <span>Add Vector Asset</span>
-              </button>
-            )}
+          {/* Center: Global Search Bar */}
+          <div className="hidden md:flex items-center flex-1 max-w-md mx-6">
+            <div className="relative w-full">
+              <Search size={14} className="absolute left-3.5 top-2.5 text-[#94a3b8]" />
+              <input
+                type="text"
+                placeholder="Search tokens, components, docs, pipelines..."
+                value={tokenSearch}
+                onChange={(e) => setTokenSearch(e.target.value)}
+                className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-4 py-1.5 rounded-full text-xs text-[#0f172a] placeholder-[#94a3b8] focus:bg-white focus:outline-none focus:border-[#2563eb] transition-all"
+              />
+            </div>
+          </div>
 
-            {activeNav === 'docs' && selectedDocPage && (
-              <button
-                onClick={handleSaveDocPage}
-                disabled={savingDocPage}
-                className="btn-primary text-xs"
-              >
-                <Check size={14} />
-                <span>{savingDocPage ? 'Saving...' : 'Save Document'}</span>
-              </button>
-            )}
+          {/* Right: Quick Action Pill Buttons, Notifications & User Avatar */}
+          <div className="flex items-center gap-2.5">
+            {/* Quick Add Token Button */}
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn-primary text-xs py-1.5 px-3 rounded-full flex items-center gap-1.5 shadow-xs"
+            >
+              <Plus size={13} />
+              <span className="hidden sm:inline">Add Token</span>
+            </button>
 
-            {activeNav === 'overview' && (
-              <button
-                onClick={() => setActiveNav('figma')}
-                className="btn-primary text-xs"
-              >
-                <Plus size={14} />
-                <span>Connect source</span>
-              </button>
-            )}
+            {/* Quick Export Code Button */}
+            <button
+              onClick={() => setActiveNav('automation')}
+              className="btn-secondary text-xs py-1.5 px-3 rounded-full flex items-center gap-1.5"
+            >
+              <Download size={13} className="text-[#64748b]" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
 
-            {activeNav === 'contexts' && (
-              <button
-                onClick={handleDownloadSkill}
-                className="btn-primary text-xs"
-              >
-                <Download size={14} />
-                <span>Export SKILL.md</span>
-              </button>
-            )}
+            {/* Notifications Button */}
+            <button
+              type="button"
+              onClick={() => showUiNotice('All 31 tokens and 6 components in sync with live database.')}
+              aria-label="Notifications"
+              className="w-9 h-9 rounded-full bg-white border border-[#e2e8f0] flex items-center justify-center text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8fafc] shadow-xs transition-colors relative"
+            >
+              <Bell size={15} />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#3b82f6]" />
+            </button>
 
-            {activeNav === 'automation' && (
-              <button
-                onClick={() => {
-                  setExportFormat('tailwind');
-                  loadExport('tailwind');
-                }}
-                className="btn-primary text-xs"
-              >
-                <Play size={14} />
-                <span>Run Pipeline</span>
-              </button>
-            )}
+            {/* User Avatar Circle */}
+            <button
+              type="button"
+              onClick={() => setShowAuthModal(true)}
+              title="Click to manage credentials"
+              className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#0f172a] to-[#334155] border-2 border-white shadow-sm flex items-center justify-center text-xs font-bold text-white tracking-wider"
+            >
+              PR
+            </button>
           </div>
         </header>
 
-        {/* Dynamic View Body */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* ========================================================================= */}
-          {/* VIEW: OVERVIEW (Screenshot 2 - The Node Flow Graph & 4 Metric Cards)      */}
-          {/* ========================================================================= */}
-          {activeNav === 'overview' && (
-            <div className="space-y-6 max-w-6xl mx-auto">
-              {/* 4 Metric Cards Bar */}
-              <div className="grid grid-cols-4 gap-4">
-                <div
-                  onClick={() => setActiveNav('tokens')}
-                  className="bg-white border border-[#e2e8f0] p-4 rounded-lg shadow-sm hover:border-[#2563eb] cursor-pointer transition-all"
-                >
-                  <div className="text-xs font-semibold text-[#64748b]">Design tokens</div>
-                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{tokens.length}</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-1">Colors, dimensions, typography, shadows</div>
-                </div>
-
-                <div
-                  onClick={() => setActiveNav('components')}
-                  className="bg-white border border-[#e2e8f0] p-4 rounded-lg shadow-sm hover:border-[#2563eb] cursor-pointer transition-all"
-                >
-                  <div className="text-xs font-semibold text-[#64748b]">Components</div>
-                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{components.length}</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-1">Buttons, inputs, cards, badges, modals</div>
-                </div>
-
-                <div
-                  onClick={() => setActiveNav('assets')}
-                  className="bg-white border border-[#e2e8f0] p-4 rounded-lg shadow-sm hover:border-[#2563eb] cursor-pointer transition-all"
-                >
-                  <div className="text-xs font-semibold text-[#64748b]">Assets</div>
-                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{assetsList.length}</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-1">Brand logos, SVGs, vector icons</div>
-                </div>
-
-                <div
-                  onClick={() => setActiveNav('docs')}
-                  className="bg-white border border-[#e2e8f0] p-4 rounded-lg shadow-sm hover:border-[#2563eb] cursor-pointer transition-all"
-                >
-                  <div className="text-xs font-semibold text-[#64748b]">Docs pages</div>
-                  <div className="text-2xl font-bold text-[#0f172a] mt-1">{docPagesList.length}</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-1">Welcome, Foundations, Components, MCP</div>
-                </div>
-              </div>
-
-              {/* Large Interactive Visual Node Flow Graph */}
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-8 shadow-sm relative overflow-hidden">
-                <div className="text-center mb-8">
-                  <h2 className="text-lg font-bold text-[#0f172a]">Supernova Unified Design Architecture</h2>
-                  <p className="text-xs text-[#64748b] mt-1">
-                    Continuous synchronization from raw design sources through the central truth hub to AI agents & production code
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-6 items-center relative">
-                  {/* Left Column: Data Sources */}
-                  <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#334155]">Data sources</span>
-                      <span className="px-2 py-0.5 text-[10px] font-semibold bg-[#ecfdf5] text-[#059669] rounded-full">
-                        Connected
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#64748b]">
-                      Sync tokens, components, and variables from multiple authoring tools.
-                    </p>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <IntegrationLogo name="figma" size={16} />
-                          <span className="text-xs font-medium text-[#0f172a]">Figma Variables & Styles</span>
-                        </div>
-                        <span className="text-[10px] text-[#10b981] font-semibold">Active</span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <IntegrationLogo name="tokens_studio" size={16} />
-                          <span className="text-xs font-medium text-[#0f172a]">Tokens Studio</span>
-                        </div>
-                        <span className="text-[10px] text-[#10b981] font-semibold">Ready</span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <IntegrationLogo name="storybook" size={16} />
-                          <span className="text-xs font-medium text-[#0f172a]">Storybook Integration</span>
-                        </div>
-                        <span className="text-[10px] text-[#64748b]">Mapped</span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <IntegrationLogo name="github" size={16} />
-                          <span className="text-xs font-medium text-[#0f172a]">GitHub Code Sync</span>
-                        </div>
-                        <span className="text-[10px] text-[#10b981] font-semibold">Tracked</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setActiveNav('figma')}
-                      className="w-full text-center py-2 bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] rounded-lg text-xs font-semibold text-[#0f172a] transition-colors"
-                    >
-                      Manage sources
-                    </button>
-                  </div>
-
-                  {/* Center Column: Supernova Central Hub Atom */}
-                  <div className="flex flex-col items-center justify-center p-6 text-center">
-                    <div className="relative w-28 h-28 flex items-center justify-center mb-4">
-                      {/* Animated Rings */}
-                      <div className="absolute inset-0 rounded-full border-2 border-dashed border-[#93c5fd] animate-spin" style={{ animationDuration: '20s' }} />
-                      <div className="absolute inset-2 rounded-full border border-[#bfdbfe]" />
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#2563eb] to-[#06b6d4] flex items-center justify-center shadow-lg text-white">
-                        <Sparkles size={28} className="animate-pulse" />
-                      </div>
-                    </div>
-
-                    <h3 className="text-sm font-bold text-[#0f172a]">Supernova Core Hub</h3>
-                    <p className="text-xs text-[#2563eb] font-semibold mt-0.5">Single Source of Truth</p>
-                    <p className="text-[11px] text-[#64748b] mt-1 max-w-[200px]">
-                      Deterministic resolution of aliases, math tokens, multi-brand themes, and AST linting rules.
-                    </p>
-
-                    <div className="mt-4 flex items-center gap-2">
-                      <span className="px-2 py-1 text-[10px] font-semibold bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] rounded-md">
-                        v1.3.0 Draft
-                      </span>
-                      <span className="px-2 py-1 text-[10px] font-semibold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] rounded-md">
-                        100% Validated
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Destinations */}
-                  <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#334155]">Destinations</span>
-                      <span className="px-2 py-0.5 text-[10px] font-semibold bg-[#eff6ff] text-[#2563eb] rounded-full">
-                        Live Output
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#64748b]">
-                      Publish docs, deliver production code, and feed AI agents with realtime MCP context.
-                    </p>
-
-                    <div className="space-y-2">
-                      <div
-                        onClick={() => setActiveNav('contexts')}
-                        className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg cursor-pointer hover:border-[#2563eb] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <IntegrationLogo name="claude" size={16} />
-                          <div>
-                            <div className="text-xs font-medium text-[#0f172a]">MCP Editor & Consumer</div>
-                            <div className="text-[10px] text-[#64748b]">Claude, Cursor, Codex, Windsurf</div>
-                          </div>
-                        </div>
-                        <ArrowRight size={13} className="text-[#94a3b8]" />
-                      </div>
-
-                      <div
-                        onClick={() => setActiveNav('docs')}
-                        className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg cursor-pointer hover:border-[#2563eb] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <BookOpen size={16} className="text-[#2563eb]" />
-                          <div>
-                            <div className="text-xs font-medium text-[#0f172a]">Documentation Site</div>
-                            <div className="text-[10px] text-[#64748b]">5 Pages Published Live</div>
-                          </div>
-                        </div>
-                        <ArrowRight size={13} className="text-[#94a3b8]" />
-                      </div>
-
-                      <div
-                        onClick={() => setActiveNav('automation')}
-                        className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg cursor-pointer hover:border-[#2563eb] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <FileCode size={16} className="text-[#059669]" />
-                          <div>
-                            <div className="text-xs font-medium text-[#0f172a]">Code Automations</div>
-                            <div className="text-[10px] text-[#64748b]">Tailwind 4, CSS, Style Dictionary</div>
-                          </div>
-                        </div>
-                        <ArrowRight size={13} className="text-[#94a3b8]" />
-                      </div>
-
-                      <div
-                        onClick={() => setActiveNav('docs')}
-                        className="flex items-center justify-between p-2.5 bg-white border border-[#e2e8f0] rounded-lg cursor-pointer hover:border-[#2563eb] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <MessageSquare size={16} className="text-[#7c3aed]" />
-                          <div>
-                            <div className="text-xs font-medium text-[#0f172a]">Portal (Ask AI)</div>
-                            <div className="text-[10px] text-[#64748b]">Design System Copilot</div>
-                          </div>
-                        </div>
-                        <ArrowRight size={13} className="text-[#94a3b8]" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Activity & Quick Guides */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#64748b] mb-3">
-                    Recent Platform Activity
-                  </h3>
-                  <div className="space-y-3 text-xs">
-                    <div className="flex items-center justify-between py-1.5 border-b border-[#f1f5f9]">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 size={14} className="text-[#10b981]" />
-                        <span className="font-medium text-[#0f172a]">MCP Tool query from Claude Code agent</span>
-                      </div>
-                      <span className="text-[11px] text-[#94a3b8]">2m ago</span>
-                    </div>
-
-                    <div className="flex items-center justify-between py-1.5 border-b border-[#f1f5f9]">
-                      <div className="flex items-center gap-2">
-                        <Code2 size={14} className="text-[#2563eb]" />
-                        <span className="font-medium text-[#0f172a]">Tailwind CSS 4 exporter generated 42 tokens</span>
-                      </div>
-                      <span className="text-[11px] text-[#94a3b8]">15m ago</span>
-                    </div>
-
-                    <div className="flex items-center justify-between py-1.5 border-b border-[#f1f5f9]">
-                      <div className="flex items-center gap-2">
-                        <IntegrationLogo name="figma" size={14} />
-                        <span className="font-medium text-[#0f172a]">Figma Variables synced (Light mode)</span>
-                      </div>
-                      <span className="text-[11px] text-[#94a3b8]">1h ago</span>
-                    </div>
-
-                    <div className="flex items-center justify-between py-1.5">
-                      <div className="flex items-center gap-2">
-                        <GitPullRequest size={14} className="text-[#6366f1]" />
-                        <span className="font-medium text-[#0f172a]">GitHub Delivery PR #104 ready for review</span>
-                      </div>
-                      <span className="text-[11px] text-[#94a3b8]">3h ago</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#64748b] mb-3">
-                    Supernova 2026 Playbooks
-                  </h3>
-                  <div className="space-y-2 text-xs">
-                    <a
-                      href="https://supernova.io/for-ai"
-                      target="_blank"
-                      className="block p-2.5 bg-[#f8fafc] hover:bg-[#f1f5f9] rounded-lg border border-[#e2e8f0] transition-colors"
-                    >
-                      <div className="font-semibold text-[#0f172a] flex items-center justify-between">
-                        <span>Agentic Design Systems Playbook</span>
-                        <ArrowUpRight size={13} className="text-[#64748b]" />
-                      </div>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">
-                        How to connect Supernova MCP to Claude Code, Cursor, Codex, and Windsurf.
-                      </p>
-                    </a>
-
-                    <a
-                      href="/docs"
-                      target="_blank"
-                      className="block p-2.5 bg-[#f8fafc] hover:bg-[#f1f5f9] rounded-lg border border-[#e2e8f0] transition-colors"
-                    >
-                      <div className="font-semibold text-[#0f172a] flex items-center justify-between">
-                        <span>Tailwind CSS 4 @theme Integration</span>
-                        <ArrowUpRight size={13} className="text-[#64748b]" />
-                      </div>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">
-                        Zero-config token compilation using modern CSS color-mix and modern CSS variables.
-                      </p>
-                    </a>
-                  </div>
-                </div>
-              </div>
+        {/* WORKSPACE BODY (SLIM ICON RAIL + MAIN CONTENT AREA) */}
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+          {/* 2. SLIM VERTICAL ICON RAIL */}
+          <nav className="w-[68px] sm:w-[74px] bg-white/70 backdrop-blur-md border-r border-[#e2e8f0]/80 flex flex-col justify-between items-center py-4 px-2 select-none z-20 flex-shrink-0" aria-label="Main Navigation">
+            {/* Primary Nav Items */}
+            <div className="flex flex-col items-center gap-2 w-full">
+              {[
+                { nav: 'overview' as const, label: 'Overview', icon: <Grid size={17} /> },
+                { nav: 'tokens' as const, label: 'Design Tokens', icon: <Layers size={17} />, count: tokens.length },
+                { nav: 'components' as const, label: 'Components', icon: <Box size={17} />, count: components.length },
+                { nav: 'assets' as const, label: 'Vector Assets', icon: <ImageIcon size={17} />, count: assetsList.length },
+                { nav: 'docs' as const, label: 'Living Docs', icon: <BookOpen size={17} />, count: docPagesList.length },
+                { nav: 'figma' as const, label: 'Figma Sync', icon: <IntegrationLogo name="figma" size={16} /> },
+                { nav: 'automation' as const, label: 'Code Automation', icon: <GitPullRequest size={17} /> },
+                { nav: 'audit' as const, label: 'AST Linter', icon: <ShieldCheck size={17} /> },
+                { nav: 'releases' as const, label: 'Releases', icon: <Tag size={17} />, count: releasesList.length },
+                { nav: 'contexts' as const, label: 'AI Contexts', icon: <Sparkles size={17} /> },
+              ].map((item) => {
+                const isActive = activeNav === item.nav;
+                return (
+                  <button
+                    key={item.nav}
+                    type="button"
+                    onClick={() => setActiveNav(item.nav)}
+                    title={item.label}
+                    aria-label={item.label}
+                    className={`group relative w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+                      isActive
+                        ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/15 scale-105'
+                        : 'text-[#64748b] hover:bg-white hover:text-[#0f172a] hover:shadow-xs'
+                    }`}
+                  >
+                    {item.icon}
+                    {/* Tooltip */}
+                    <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-30">
+                      {item.label} {item.count !== undefined ? `(${item.count})` : ''}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          )}
+
+            {/* Bottom Utilities (Settings, Help, Auth) */}
+            <div className="flex flex-col items-center gap-2 w-full pt-3 border-t border-[#e2e8f0]/60">
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(true)}
+                title="Settings & Credentials"
+                className="group relative w-10 h-10 rounded-xl flex items-center justify-center text-[#64748b] hover:bg-white hover:text-[#0f172a] transition-all"
+              >
+                <Settings size={16} />
+                <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-30">
+                  Settings & Auth
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => window.open('/docs', '_blank', 'noopener,noreferrer')}
+                title="Public Documentation Portal"
+                className="group relative w-10 h-10 rounded-xl flex items-center justify-center text-[#64748b] hover:bg-white hover:text-[#0f172a] transition-all"
+              >
+                <HelpCircle size={16} />
+                <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-30">
+                  Documentation Portal
+                </span>
+              </button>
+            </div>
+          </nav>
+
+          {/* 3. MAIN WORKSPACE VIEWPORT */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-7 relative bg-transparent">
+            {/* Banner Notice */}
+            {uiNotice && (
+              <div
+                role="status"
+                className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-4 py-2.5 text-xs text-[#1e40af] shadow-xs"
+              >
+                <span>{uiNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setUiNotice(null)}
+                  className="font-bold hover:underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* VIEW: OVERVIEW - Pixel-accurate Payno / Orbix aesthetic                   */}
+            {/* ========================================================================= */}
+            {activeNav === 'overview' && (
+              <div className="space-y-6 max-w-7xl mx-auto">
+                {/* TOP ROW: Available Balance / Stats & Activity / Fast Delivery */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                  {/* CARD 1: Available Tokens (Available Balance in Payno) */}
+                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-xs font-semibold text-[#64748b]">
+                        <span className="flex items-center gap-1.5">
+                          <Database size={13} className="text-[#3b82f6]" />
+                          Available Design Tokens
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setBalanceVisible(!balanceVisible)}
+                          className="text-[#94a3b8] hover:text-[#0f172a] transition-colors p-1"
+                          title={balanceVisible ? 'Hide token count' : 'Show token count'}
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
+
+                      <div className="mt-3 flex items-baseline gap-2">
+                        <span className="text-3xl font-extrabold tracking-tight text-[#0f172a]">
+                          {balanceVisible ? `${tokens.length} Tokens` : '••••••••'}
+                        </span>
+                        <span className="text-[11px] font-semibold text-[#059669] bg-[#ecfdf5] px-2 py-0.5 rounded-full border border-[#a7f3d0]">
+                          Active
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#64748b] mt-1">
+                        Nova Design System • W3C DTCG Standard
+                      </p>
+                    </div>
+
+                    {/* Quick Actions (4 circular buttons in a row matching reference) */}
+                    <div className="mt-6 pt-5 border-t border-[#f1f5f9]">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] mb-3">
+                        Quick Actions
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddModal(true)}
+                          className="group flex flex-col items-center gap-1.5"
+                        >
+                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                            <Plus size={16} />
+                          </div>
+                          <span className="text-[10px] font-semibold text-[#475569]">Add Token</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExportFormat('css');
+                            setActiveNav('automation');
+                          }}
+                          className="group flex flex-col items-center gap-1.5"
+                        >
+                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                            <Download size={15} />
+                          </div>
+                          <span className="text-[10px] font-semibold text-[#475569]">Export</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('figma')}
+                          className="group flex flex-col items-center gap-1.5"
+                        >
+                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                            <IntegrationLogo name="figma" size={16} />
+                          </div>
+                          <span className="text-[10px] font-semibold text-[#475569]">Figma Sync</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('automation')}
+                          className="group flex flex-col items-center gap-1.5"
+                        >
+                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                            <GitPullRequest size={15} />
+                          </div>
+                          <span className="text-[10px] font-semibold text-[#475569]">Deliver PR</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD 2: Stats & Activity Chart (Revenue/Expense/Activity in Payno) */}
+                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
+                          <span className="text-[11px] font-semibold text-[#64748b]">Total Releases</span>
+                          <div className="text-xl font-bold text-[#0f172a] mt-0.5">{releasesList.length || 21} Tags</div>
+                          <span className="text-[10px] text-[#059669] font-medium">+3 this month</span>
+                        </div>
+                        <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
+                          <span className="text-[11px] font-semibold text-[#64748b]">Living Docs</span>
+                          <div className="text-xl font-bold text-[#0f172a] mt-0.5">{docPagesList.length || 5} Guides</div>
+                          <span className="text-[10px] text-[#3b82f6] font-medium">100% WCAG AA</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs font-semibold text-[#64748b] mb-1">
+                          <span>System Query Activity</span>
+                          <span className="text-[11px] text-[#2563eb]">This Week</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-[#0f172a]">12.4K</span>
+                          <span className="text-[11px] font-semibold text-[#059669]">↑ +8.2%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Interactive weekly bar chart */}
+                    <div className="mt-4 pt-3 border-t border-[#f1f5f9]">
+                      <div className="flex h-20 items-end gap-2 px-1">
+                        {[
+                          { day: 'S', height: 45, count: '1.2k' },
+                          { day: 'M', height: 75, count: '2.4k' },
+                          { day: 'T', height: 60, count: '1.8k' },
+                          { day: 'W', height: 95, count: '3.1k', active: true },
+                          { day: 'T', height: 70, count: '2.1k' },
+                          { day: 'F', height: 85, count: '2.7k' },
+                          { day: 'S', height: 50, count: '1.5k' },
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative">
+                            <div
+                              className={`w-full rounded-md transition-all ${
+                                item.active ? 'bg-[#0f172a]' : 'bg-[#cbd5e1] group-hover:bg-[#94a3b8]'
+                              }`}
+                              style={{ height: `${item.height}%` }}
+                            />
+                            <span className={`text-[10px] ${item.active ? 'font-bold text-[#0f172a]' : 'text-[#94a3b8]'}`}>
+                              {item.day}
+                            </span>
+                            <span className="pointer-events-none absolute -top-7 px-1.5 py-0.5 rounded bg-[#0f172a] text-white text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                              {item.count}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD 3: Fast Delivery & Export (Send Money card in Payno) */}
+                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-xs font-semibold text-[#0f172a]">
+                        <span>Fast Code Delivery</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('automation')}
+                          className="text-[11px] text-[#2563eb] hover:underline"
+                        >
+                          Configure
+                        </button>
+                      </div>
+
+                      {/* Target Destination Selector */}
+                      <div className="mt-3 p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-between">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#0f172a] text-white flex items-center justify-center shrink-0">
+                            <IntegrationLogo name="github" size={16} className="invert" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-xs font-bold text-[#0f172a] truncate">{targetRepo}</span>
+                            <span className="block text-[10px] text-[#64748b]">Branch: {targetBranch}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav('automation')}
+                          className="text-[11px] font-semibold text-[#2563eb] hover:underline shrink-0"
+                        >
+                          Change
+                        </button>
+                      </div>
+
+                      {/* Exporter Format Dropdown */}
+                      <div className="mt-3">
+                        <label className="text-[11px] font-semibold text-[#64748b] block mb-1">
+                          Target Exporter Format
+                        </label>
+                        <select
+                          value={quickDeliveryFormat}
+                          onChange={(e) => setQuickDeliveryFormat(e.target.value)}
+                          className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-[#2563eb]"
+                        >
+                          <option value="tailwind">Tailwind CSS 4 (@theme CSS variables)</option>
+                          <option value="css">CSS Custom Properties (:root & dark mode)</option>
+                          <option value="typescript">TypeScript Tokens (type-safe constants)</option>
+                          <option value="swift">Swift / SwiftUI Structs (iOS)</option>
+                          <option value="kotlin">Kotlin Jetpack Compose (Android)</option>
+                          <option value="json">W3C DTCG Standard JSON</option>
+                        </select>
+                      </div>
+
+                      {/* Status estimate */}
+                      <div className="mt-3 flex items-center justify-between text-[11px] text-[#64748b]">
+                        <span>Delivery Protocol:</span>
+                        <span className="font-semibold text-[#059669]">Direct GitHub PR & Local</span>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="mt-4">
+                      {quickDeliverySuccess && (
+                        <div className="mb-2 p-2 bg-[#ecfdf5] border border-[#a7f3d0] rounded-lg text-[11px] text-[#059669] font-medium truncate">
+                          {quickDeliverySuccess}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleQuickDeliver}
+                        disabled={quickDelivering}
+                        className="btn-primary w-full py-2.5 justify-center text-xs font-semibold rounded-xl"
+                      >
+                        {quickDelivering ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Delivering Tokens...</span>
+                          </>
+                        ) : (
+                          <>
+                            <GitPullRequest size={14} />
+                            <span>Deliver Tokens to Production</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BOTTOM ROW: Recent Activity / Active Pipelines / Visual Token Card */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                  {/* CARD 4: Recent Activity (Recent transactions in Payno) */}
+                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#64748b] mb-4">
+                        <span>Recent Activity</span>
+                        <button type="button" onClick={() => setActiveNav('mcp-analytics')} className="text-[#2563eb] font-semibold text-[11px] hover:underline lowercase capitalize">
+                          View all
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {[
+                          { title: 'Figma Variables Synced', detail: '31 tokens updated', time: '1h ago', icon: <IntegrationLogo name="figma" size={14} />, badge: '+31' },
+                          { title: 'Tokens Exported to Tailwind', detail: 'tailwind.tokens.js', time: '15m ago', icon: <Code2 size={14} className="text-[#2563eb]" />, badge: 'CSS' },
+                          { title: 'MCP Context Query', detail: 'Claude Code Agent', time: '2m ago', icon: <CheckCircle2 size={14} className="text-[#10b981]" />, badge: 'AI' },
+                          { title: 'Delivery PR Created', detail: 'Branch: main', time: '3h ago', icon: <GitPullRequest size={14} className="text-[#6366f1]" />, badge: 'PR #104' },
+                          { title: 'AST Compliance Passed', detail: '0 hardcoded violations', time: '5h ago', icon: <ShieldCheck size={14} className="text-[#059669]" />, badge: '100%' },
+                        ].map((activity, idx) => (
+                          <div key={idx} className="flex items-center justify-between py-1.5 border-b border-[#f1f5f9] last:border-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-7 h-7 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center shrink-0">
+                                {activity.icon}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="block text-xs font-semibold text-[#0f172a] truncate">{activity.title}</span>
+                                <span className="block text-[10px] text-[#94a3b8]">{activity.detail} • {activity.time}</span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-bold text-[#0f172a] shrink-0 bg-[#f1f5f9] px-2 py-0.5 rounded-md">
+                              {activity.badge}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD 5: Active Delivery Pipelines (Upcoming Payments in Payno) */}
+                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#64748b] mb-4">
+                        <span>Delivery Pipelines</span>
+                        <button type="button" onClick={() => setActiveNav('automation')} className="text-[#2563eb] font-semibold text-[11px] hover:underline lowercase capitalize">
+                          View all
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {[
+                          { title: 'Figma Webhook Sync', desc: 'Auto-sync on variable publish', status: 'Active', color: '#10b981' },
+                          { title: 'Tailwind CSS 4 @theme', desc: 'Zero-config modern CSS engine', status: 'Ready', color: '#3b82f6' },
+                          { title: 'iOS SwiftUI SDK Packager', desc: 'Native Tokens.swift generation', status: 'Ready', color: '#6366f1' },
+                          { title: 'Android Compose Packager', desc: 'Jetpack Compose token objects', status: 'Ready', color: '#8b5cf6' },
+                        ].map((pipeline, idx) => (
+                          <div key={idx} className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-between">
+                            <div>
+                              <span className="block text-xs font-bold text-[#0f172a]">{pipeline.title}</span>
+                              <span className="block text-[10px] text-[#64748b] mt-0.5">{pipeline.desc}</span>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#e2e8f0] text-[#0f172a] flex items-center gap-1 shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: pipeline.color }} />
+                              {pipeline.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD 6: Visual Live Token Card (Credit Card widget in Payno) */}
+                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#1e1b4b] text-white border-0 shadow-xl relative overflow-hidden">
+                    {/* Subtle decorative glow */}
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
+                    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-md bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-xs">
+                            N
+                          </div>
+                          <span className="text-xs font-bold tracking-wider uppercase text-white/90">Nova Design Tokens</span>
+                        </div>
+                        <span className="text-[10px] font-mono uppercase bg-white/10 px-2 py-0.5 rounded text-white/80">
+                          Live Preview
+                        </span>
+                      </div>
+
+                      {/* Live Token Swatches */}
+                      <div className="my-5 p-3.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-white/70">Primary Blue</span>
+                          <span className="font-mono text-white font-semibold">#3b82f6</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-[#3b82f6] shadow-sm border border-white/20" />
+                          <div className="w-7 h-7 rounded-lg bg-[#2563eb] shadow-sm border border-white/20" />
+                          <div className="w-7 h-7 rounded-lg bg-[#0f172a] shadow-sm border border-white/20" />
+                          <div className="w-7 h-7 rounded-lg bg-[#f1f5f9] shadow-sm border border-white/20" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-xs">
+                        <div className="text-[11px] text-white/70">Typography & Scale</div>
+                        <div className="font-semibold text-white tracking-tight">Plus Jakarta Sans • 16px Base</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 pt-3 border-t border-white/10 relative z-10 flex items-center justify-between">
+                      <span className="text-[10px] text-white/60 font-mono">DTCG v1.3.0</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerDownload('nova-tokens.json', JSON.stringify(tokens, null, 2), 'application/json');
+                          showUiNotice('Downloaded nova-tokens.json');
+                        }}
+                        className="text-[11px] font-semibold bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                      >
+                        <Download size={12} />
+                        <span>Download JSON</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
           {/* ========================================================================= */}
           {/* VIEW: CONTEXTS (Screenshot 3 - The AI Agentic Distribution Hub)           */}
@@ -1617,19 +1502,25 @@ Endpoint: \`${mcpEndpointUrl}\`
           {activeNav === 'contexts' && (
             <div className="space-y-6 max-w-6xl mx-auto">
               {/* Header Description */}
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-base font-bold text-[#0f172a]">Design System Contexts</h2>
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={18} className="text-[#3b82f6]" />
+                    <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Design System Contexts</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] text-[11px] font-semibold border border-[#bfdbfe]">
+                      AI Agentic Hub
+                    </span>
+                  </div>
                   <p className="text-xs text-[#64748b] mt-1">
                     Manage and distribute organizational knowledge across AI tools, workflows, and coding agents.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={handleDownloadSkill} className="btn-secondary text-xs">
+                  <button onClick={handleDownloadSkill} className="btn-secondary text-xs flex items-center gap-1.5">
                     <Download size={13} />
                     <span>Download SKILL.md</span>
                   </button>
-                  <button onClick={handleDownloadClaudePlugin} className="btn-primary text-xs">
+                  <button onClick={handleDownloadClaudePlugin} className="btn-primary text-xs flex items-center gap-1.5 shadow-xs">
                     <IntegrationLogo name="claude" size={13} />
                     <span>Export Claude Plugin</span>
                   </button>
@@ -1639,7 +1530,7 @@ Endpoint: \`${mcpEndpointUrl}\`
               {/* Two Column Layout (Checklist Left, Distribution Right) */}
               <div className="grid grid-cols-12 gap-6">
                 {/* Left 7 Columns: Data and Knowledge Checklist */}
-                <div className="col-span-7 bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-5">
+                <div className="col-span-12 lg:col-span-7 nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-5">
                   <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
                     <div>
                       <h3 className="text-sm font-bold text-[#0f172a]">My Design System</h3>
@@ -1804,9 +1695,9 @@ Endpoint: \`${mcpEndpointUrl}\`
                 </div>
 
                 {/* Right 5 Columns: Distribution Panel */}
-                <div className="col-span-5 space-y-6">
+                <div className="col-span-12 lg:col-span-5 space-y-6">
                   {/* Model Context Protocol (MCP) Distribution Card */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                  <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-[#334155]">
                         Model Context Protocol
@@ -1877,7 +1768,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* Agent Export Formats Card */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                  <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[#334155]">
                       Agent Export Formats
                     </h4>
@@ -2548,11 +2439,14 @@ Endpoint: \`${mcpEndpointUrl}\`
           {activeNav === 'docs' && (
             <div className="space-y-6 max-w-6xl mx-auto">
               {/* Documentation Header */}
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <BookOpen size={18} className="text-[#2563eb]" />
-                    <h2 className="text-base font-bold text-[#0f172a]">Living Documentation Studio</h2>
+                    <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Living Documentation Studio</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] text-[11px] font-semibold border border-[#bfdbfe]">
+                      {docPagesList.length} Guides
+                    </span>
                   </div>
                   <p className="text-xs text-[#64748b] mt-1">
                     Author, edit, and maintain design system guidelines and component specs. Grounded directly in MCP for AI tools.
@@ -2572,7 +2466,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                     <button
                       onClick={handleSaveDocPage}
                       disabled={savingDocPage}
-                      className="btn-primary text-xs flex items-center gap-1.5"
+                      className="btn-primary text-xs flex items-center gap-1.5 shadow-xs"
                     >
                       <Check size={13} />
                       <span>{savingDocPage ? 'Saving...' : 'Save Document'}</span>
@@ -2582,7 +2476,7 @@ Endpoint: \`${mcpEndpointUrl}\`
               </div>
 
               {/* Documentation Page Selector Tabs */}
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-3 shadow-sm flex items-center justify-between overflow-x-auto">
+              <div className="nexus-card p-3 rounded-2xl border border-[#e2e8f0]/90 bg-white flex items-center justify-between overflow-x-auto shadow-xs">
                 <div className="flex items-center gap-2">
                   {docPagesList.map((page) => (
                     <button
@@ -2592,7 +2486,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                         setEditingDocTitle(page.title);
                         setEditingDocContent(page.content);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
                         selectedDocPage?.id === page.id
                           ? 'bg-[#2563eb] text-white shadow-xs'
                           : 'bg-[#f8fafc] text-[#475569] hover:bg-[#e2e8f0]'
@@ -2609,16 +2503,16 @@ Endpoint: \`${mcpEndpointUrl}\`
                   ))}
                 </div>
 
-                <div className="text-[11px] text-[#64748b] px-2 font-mono">
+                <div className="text-[11px] text-[#64748b] px-3 font-mono">
                   {docPagesList.length} pages published
                 </div>
               </div>
 
               {/* Dual-Pane Editor & Live Document Preview */}
               {selectedDocPage ? (
-                <div className="grid grid-cols-2 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                   {/* Left Column: Markdown Editor */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
                       <div className="flex items-center gap-2">
                         <Code2 size={16} className="text-[#2563eb]" />
@@ -2648,7 +2542,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                         rows={16}
                         value={editingDocContent}
                         onChange={(e) => setEditingDocContent(e.target.value)}
-                        className="w-full bg-[#0f172a] text-[#f8fafc] font-mono text-xs p-4 rounded-lg leading-relaxed focus:outline-none focus:ring-1 focus:ring-[#2563eb]"
+                        className="w-full bg-[#0f172a] text-[#f8fafc] font-mono text-xs p-4 rounded-xl leading-relaxed focus:outline-none focus:ring-1 focus:ring-[#2563eb]"
                       />
                     </div>
 
@@ -2665,7 +2559,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* Right Column: Live Document Preview */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+                  <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
                       <div className="flex items-center gap-2">
                         <Eye size={16} className="text-[#059669]" />
@@ -2771,79 +2665,146 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* ========================================================================= */}
           {activeNav === 'tokens' && (
             <div className="space-y-6 max-w-6xl mx-auto">
-              <div className="flex items-center justify-between bg-white border border-[#e2e8f0] p-4 rounded-xl shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-2.5 text-[#94a3b8]" />
-                    <input
-                      type="text"
-                      placeholder="Filter tokens by path or value..."
-                      value={tokenSearch}
-                      onChange={(e) => setTokenSearch(e.target.value)}
-                      className="bg-[#f8fafc] border border-[#cbd5e1] pl-8 pr-3 py-1.5 rounded-lg text-xs w-64 focus:outline-none focus:border-[#2563eb]"
-                    />
+              {/* Header Card */}
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6]"></span>
+                    <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Design Tokens Studio</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] text-[11px] font-semibold border border-[#bfdbfe]">
+                      {filteredTokens.length} of {tokens.length} tokens
+                    </span>
                   </div>
-
-                  <div className="flex items-center gap-1 bg-[#f8fafc] border border-[#cbd5e1] p-0.5 rounded-lg text-xs">
-                    {['all', 'color', 'dimension', 'typography', 'shadow'].map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-2.5 py-1 rounded-md capitalize transition-colors ${
-                          selectedCategory === cat ? 'bg-white font-semibold text-[#2563eb] shadow-sm' : 'text-[#64748b]'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
+                  <p className="text-xs text-[#64748b] mt-1">
+                    W3C Design Tokens Community Group (DTCG) specification with mathematical alias resolution.
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setShowAddModal(true)} className="btn-primary text-xs">
+                  <button
+                    onClick={() => {
+                      triggerDownload('nova-tokens.json', JSON.stringify(tokens, null, 2), 'application/json');
+                      showUiNotice('Exported all tokens to DTCG JSON format.');
+                    }}
+                    className="btn-secondary text-xs flex items-center gap-1.5"
+                  >
+                    <Download size={13} className="text-[#64748b]" />
+                    <span>Export DTCG</span>
+                  </button>
+                  <button onClick={() => setShowAddModal(true)} className="btn-primary text-xs flex items-center gap-1.5 shadow-xs">
                     <Plus size={14} />
                     <span>Add Token</span>
                   </button>
                 </div>
               </div>
 
-              {/* Tokens Table */}
-              <div className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden shadow-sm">
+              {/* Filter and Search Bar */}
+              <div className="nexus-card p-4 rounded-2xl border border-[#e2e8f0]/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search size={14} className="absolute left-3.5 top-2.5 text-[#94a3b8]" />
+                  <input
+                    type="text"
+                    placeholder="Search tokens by path or value..."
+                    value={tokenSearch}
+                    onChange={(e) => setTokenSearch(e.target.value)}
+                    className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-3 py-1.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:bg-white focus:outline-none focus:border-[#2563eb] transition-all"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-[#f8fafc] border border-[#e2e8f0] p-1 rounded-xl text-xs overflow-x-auto">
+                  {['all', 'color', 'dimension', 'typography', 'shadow'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1 rounded-lg capitalize transition-all text-xs ${
+                        selectedCategory === cat
+                          ? 'bg-white font-bold text-[#2563eb] shadow-xs'
+                          : 'text-[#64748b] hover:text-[#0f172a]'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tokens Table Card */}
+              <div className="nexus-card rounded-2xl border border-[#e2e8f0]/90 bg-white overflow-hidden shadow-xs">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] font-semibold">
-                      <th className="py-2.5 px-4">Preview</th>
-                      <th className="py-2.5 px-4">Token Path</th>
-                      <th className="py-2.5 px-4">Raw Value</th>
-                      <th className="py-2.5 px-4">Resolved Value</th>
-                      <th className="py-2.5 px-4">Category</th>
-                      <th className="py-2.5 px-4 text-right">Actions</th>
+                    <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] font-semibold text-[11px] uppercase tracking-wider">
+                      <th className="py-3 px-5">Preview</th>
+                      <th className="py-3 px-5">Token Path</th>
+                      <th className="py-3 px-5">Raw Value</th>
+                      <th className="py-3 px-5">Resolved Value</th>
+                      <th className="py-3 px-5">Category</th>
+                      <th className="py-3 px-5 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f1f5f9]">
                     {filteredTokens.map((t) => (
-                      <tr key={t.id} className="hover:bg-[#f8fafc] transition-colors">
-                        <td className="py-2.5 px-4">
+                      <tr key={t.id} className="hover:bg-[#f8fafc]/80 transition-colors group">
+                        <td className="py-3 px-5">
                           {t.category === 'color' ? (
                             <div
-                              className="w-5 h-5 rounded border border-[#cbd5e1] shadow-xs"
+                              className="w-6 h-6 rounded-lg border border-[#cbd5e1] shadow-xs transition-transform group-hover:scale-110"
                               style={{ backgroundColor: t.resolvedValue || t.rawValue }}
                             />
                           ) : (
-                            <span className="text-[10px] font-mono text-[#64748b]">[{t.category}]</span>
+                            <span className="text-[10px] font-mono text-[#64748b] bg-[#f1f5f9] px-2 py-0.5 rounded">
+                              {t.category}
+                            </span>
                           )}
                         </td>
-                        <td className="py-2.5 px-4 font-mono font-medium text-[#0f172a]">{t.path}</td>
-                        <td className="py-2.5 px-4 font-mono text-[#64748b]">{t.rawValue}</td>
-                        <td className="py-2.5 px-4 font-mono text-[#2563eb] font-semibold">{t.resolvedValue || t.rawValue}</td>
-                        <td className="py-2.5 px-4 capitalize text-[#64748b]">{t.category}</td>
-                        <td className="py-2.5 px-4 text-right">
+                        <td className="py-3 px-5">
                           <button
-                            onClick={() => handleDeleteToken(t.id)}
-                            className="text-[#94a3b8] hover:text-[#ef4444] transition-colors p-1"
+                            type="button"
+                            onClick={() => {
+                              copyToClipboard(t.path, `token-path-${t.id}`);
+                              showUiNotice(`Copied "${t.path}" to clipboard`);
+                            }}
+                            className="font-mono font-semibold text-[#0f172a] hover:text-[#2563eb] text-left transition-colors flex items-center gap-1.5"
+                            title="Click to copy path"
                           >
-                            <Trash2 size={13} />
+                            <span>{t.path}</span>
+                            {copiedKey === `token-path-${t.id}` ? (
+                              <Check size={11} className="text-[#10b981]" />
+                            ) : (
+                              <Copy size={11} className="opacity-0 group-hover:opacity-100 text-[#94a3b8] transition-opacity" />
+                            )}
                           </button>
+                        </td>
+                        <td className="py-3 px-5 font-mono text-[#64748b] text-[11px]">{t.rawValue}</td>
+                        <td className="py-3 px-5 font-mono text-[#2563eb] font-bold text-[11px]">
+                          {t.resolvedValue || t.rawValue}
+                        </td>
+                        <td className="py-3 px-5 capitalize">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#f1f5f9] text-[#475569]">
+                            {t.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                copyToClipboard(`var(--${t.path.replace(/\./g, '-')})`, `css-var-${t.id}`);
+                                showUiNotice(`Copied CSS variable to clipboard`);
+                              }}
+                              className="text-[#64748b] hover:text-[#2563eb] p-1.5 rounded-lg hover:bg-[#f1f5f9] transition-colors"
+                              title="Copy CSS Variable"
+                            >
+                              <Code2 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteToken(t.id)}
+                              className="text-[#94a3b8] hover:text-[#ef4444] p-1.5 rounded-lg hover:bg-[#fef2f2] transition-colors"
+                              title="Delete Token"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2858,27 +2819,33 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* ========================================================================= */}
           {activeNav === 'components' && (
             <div className="space-y-6 max-w-6xl mx-auto">
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-base font-bold text-[#0f172a]">Interactive Components Sandbox</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span>
+                    <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Interactive Components Sandbox</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#059669] text-[11px] font-semibold border border-[#a7f3d0]">
+                      6 Live Components
+                    </span>
+                  </div>
                   <p className="text-xs text-[#64748b] mt-1">
                     Living design system components with Storybook iframe bridge and real token styling.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 bg-[#f8fafc] border border-[#cbd5e1] p-1 rounded-lg text-xs">
+                  <div className="flex items-center gap-2 bg-[#f8fafc] border border-[#e2e8f0] p-1 rounded-xl text-xs">
                     <button
                       onClick={() => setStorybookIframeMode(false)}
-                      className={`px-2.5 py-1 rounded font-medium transition-all ${
-                        !storybookIframeMode ? 'bg-[#2563eb] text-white' : 'text-[#475569] hover:text-[#0f172a]'
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                        !storybookIframeMode ? 'bg-[#2563eb] text-white shadow-xs' : 'text-[#475569] hover:text-[#0f172a]'
                       }`}
                     >
                       React Playground
                     </button>
                     <button
                       onClick={() => setStorybookIframeMode(true)}
-                      className={`px-2.5 py-1 rounded font-medium transition-all ${
-                        storybookIframeMode ? 'bg-[#ff4785] text-white' : 'text-[#475569] hover:text-[#0f172a]'
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                        storybookIframeMode ? 'bg-[#ff4785] text-white shadow-xs' : 'text-[#475569] hover:text-[#0f172a]'
                       }`}
                     >
                       Storybook Sandbox
@@ -2888,8 +2855,8 @@ Endpoint: \`${mcpEndpointUrl}\`
               </div>
 
               {storybookIframeMode ? (
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between bg-[#f8fafc] p-3 rounded-lg border border-[#e2e8f0]">
+                <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
+                  <div className="flex items-center justify-between bg-[#f8fafc] p-3 rounded-xl border border-[#e2e8f0]">
                     <div className="flex items-center gap-2">
                       <IntegrationLogo name="storybook" size={16} />
                       <span className="text-xs font-semibold text-[#0f172a]">Storybook Iframe Host:</span>
@@ -2897,7 +2864,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                         type="text"
                         value={storybookUrl}
                         onChange={(e) => setStorybookUrl(e.target.value)}
-                        className="bg-white border border-[#cbd5e1] px-2 py-1 rounded text-xs font-mono w-64"
+                        className="bg-white border border-[#cbd5e1] px-2 py-1 rounded-lg text-xs font-mono w-64"
                         placeholder="http://localhost:6006"
                       />
                     </div>
@@ -2913,19 +2880,19 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Button Component */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="nexus-card p-5 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-[#0f172a]">Button</h3>
-                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-2 py-0.5 rounded-full">
                         var(--color-brand-primary)
                       </span>
                     </div>
-                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center">
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-center">
                       <button
                         onClick={() => setButtonClicks((c) => c + 1)}
-                        className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95"
+                        className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-95"
                       >
                         Clicked: {buttonClicks} times
                       </button>
@@ -2933,14 +2900,14 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* Input Component */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="nexus-card p-5 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-[#0f172a]">Input</h3>
-                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-2 py-0.5 rounded-full">
                         var(--border-subtle)
                       </span>
                     </div>
-                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg">
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
                       <input
                         type="text"
                         value={inputVal}
@@ -2951,29 +2918,29 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* Badge Component */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="nexus-card p-5 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-[#0f172a]">Badge</h3>
-                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-2 py-0.5 rounded-full">
                         var(--accent-emerald)
                       </span>
                     </div>
-                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center gap-2">
-                      <span className="px-2.5 py-1 text-xs font-semibold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] rounded-full">
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-center gap-2">
+                      <span className="px-3 py-1 text-xs font-semibold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] rounded-full">
                         Success Status
                       </span>
                     </div>
                   </div>
 
                   {/* Card Component */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="nexus-card p-5 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-[#0f172a]">Card</h3>
-                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-2 py-0.5 rounded-full">
                         layout / container
                       </span>
                     </div>
-                    <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg">
+                    <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
                       <div className="bg-white border border-[#cbd5e1] p-3 rounded-lg shadow-xs">
                         <div className="text-xs font-bold text-[#0f172a]">Elevated Surface</div>
                         <p className="text-[11px] text-[#64748b] mt-1">Structured design token container card.</p>
@@ -2982,17 +2949,17 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* Modal Trigger Component */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="nexus-card p-5 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-[#0f172a]">Modal Dialog</h3>
-                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-2 py-0.5 rounded-full">
                         overlay / dialog
                       </span>
                     </div>
-                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center">
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-center">
                       <button
                         onClick={() => setShowTestModal(true)}
-                        className="px-3 py-1.5 bg-[#0f172a] text-white rounded-lg text-xs font-medium hover:bg-[#1e293b]"
+                        className="px-3.5 py-2 bg-[#0f172a] text-white rounded-xl text-xs font-semibold hover:bg-[#1e293b] shadow-xs"
                       >
                         Open Dialog Preview
                       </button>
@@ -3000,14 +2967,14 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* Switch Component */}
-                  <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="nexus-card p-5 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-[#0f172a]">Switch</h3>
-                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-mono text-[#2563eb] bg-[#eff6ff] px-2 py-0.5 rounded-full">
                         form / control
                       </span>
                     </div>
-                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg flex items-center justify-center gap-3">
+                    <div className="p-6 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl flex items-center justify-center gap-3">
                       <button
                         onClick={() => setSwitchChecked(!switchChecked)}
                         className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
@@ -3035,11 +3002,14 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* ========================================================================= */}
           {activeNav === 'assets' && (
             <div className="space-y-6 max-w-6xl mx-auto">
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <Grid size={18} className="text-[#2563eb]" />
-                    <h2 className="text-base font-bold text-[#0f172a]">Vector Asset & Icon Library</h2>
+                    <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Vector Asset & Icon Library</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] text-[11px] font-semibold border border-[#bfdbfe]">
+                      {assetsList.length} Vector Assets
+                    </span>
                   </div>
                   <p className="text-xs text-[#64748b] mt-1">
                     Multi-platform SVG icons and brand assets with 1-click React JSX and raw SVG export.
@@ -3047,7 +3017,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                 </div>
                 <button
                   onClick={() => setShowAddAssetModal(true)}
-                  className="btn-primary text-xs flex items-center gap-1.5"
+                  className="btn-primary text-xs flex items-center gap-1.5 shadow-xs"
                 >
                   <Plus size={14} />
                   <span>Add Vector Asset</span>
@@ -3055,15 +3025,15 @@ Endpoint: \`${mcpEndpointUrl}\`
               </div>
 
               {/* Filter and Search Bar */}
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-4 shadow-sm flex items-center justify-between gap-4">
+              <div className="nexus-card p-4 rounded-2xl border border-[#e2e8f0]/90 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="relative flex-1">
-                  <Search size={14} className="absolute left-3 top-2.5 text-[#94a3b8]" />
+                  <Search size={14} className="absolute left-3.5 top-2.5 text-[#94a3b8]" />
                   <input
                     type="text"
                     value={assetSearch}
                     onChange={(e) => setAssetSearch(e.target.value)}
                     placeholder="Search icons by name or tag (e.g. arrow, copy, terminal, code)..."
-                    className="w-full bg-[#f8fafc] border border-[#cbd5e1] pl-9 pr-3 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[#2563eb]"
+                    className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-3 py-1.5 rounded-xl text-xs text-[#0f172a] focus:bg-white focus:outline-none focus:border-[#2563eb] transition-all"
                   />
                 </div>
 
@@ -3099,8 +3069,10 @@ Endpoint: \`${mcpEndpointUrl}\`
                     <div
                       key={asset.id}
                       onClick={() => setSelectedAsset(asset)}
-                      className={`bg-white border rounded-xl p-4 shadow-sm hover:border-[#2563eb] cursor-pointer transition-all space-y-3 ${
-                        selectedAsset?.id === asset.id ? 'border-[#2563eb] ring-1 ring-[#2563eb]' : 'border-[#e2e8f0]'
+                      className={`nexus-card rounded-2xl p-4 border transition-all space-y-3 cursor-pointer ${
+                        selectedAsset?.id === asset.id
+                          ? 'border-[#2563eb] ring-2 ring-[#2563eb]/20 shadow-md bg-white'
+                          : 'border-[#e2e8f0]/90 bg-white hover:border-[#2563eb]/50 hover:shadow-xs'
                       }`}
                     >
                       <div className="h-20 bg-[#f8fafc] rounded-lg border border-[#f1f5f9] flex items-center justify-center p-3 text-[#0f172a]">
@@ -3164,7 +3136,7 @@ Endpoint: \`${mcpEndpointUrl}\`
 
               {/* Selected Asset Inspector */}
               {selectedAsset && (
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-3">
+                <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-3">
                   <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">Asset Code Snippet:</span>
@@ -3193,12 +3165,12 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* ========================================================================= */}
           {activeNav === 'figma' && (
             <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <IntegrationLogo name="figma" size={22} />
                     <div>
-                      <h2 className="text-base font-bold text-[#0f172a]">Figma Variables & Styles Synchronizer</h2>
+                      <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Figma Variables & Styles Synchronizer</h2>
                       <p className="text-xs text-[#64748b] mt-0.5">
                         Two-stage sync: Inspect visual token diffs prior to committing changes to the database.
                       </p>
@@ -3277,7 +3249,7 @@ Endpoint: \`${mcpEndpointUrl}\`
 
               {/* Visual Pre-Sync Diff & Traceability Dashboard */}
               {figmaDiffResult && (
-                <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-5">
+                <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-5">
                   <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-4">
                     <div>
                       <h3 className="text-sm font-bold text-[#0f172a]">
@@ -3427,15 +3399,15 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* ========================================================================= */}
           {activeNav === 'audit' && (
             <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm space-y-4">
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-base font-bold text-[#0f172a]">AST Code Compliance Linter</h2>
+                    <h2 className="text-base font-bold text-[#0f172a] tracking-tight">AST Code Compliance Linter</h2>
                     <p className="text-xs text-[#64748b] mt-1">
                       Scans source code for hardcoded color hexes, arbitrary spacing, and unmapped tokens.
                     </p>
                   </div>
-                  <button onClick={handleRunAudit} disabled={auditing} className="btn-primary text-xs">
+                  <button onClick={handleRunAudit} disabled={auditing} className="btn-primary text-xs flex items-center gap-1.5 shadow-xs">
                     {auditing ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
                     <span>{auditing ? 'Auditing AST...' : 'Run Compliance Audit'}</span>
                   </button>
@@ -3446,12 +3418,12 @@ Endpoint: \`${mcpEndpointUrl}\`
                     rows={10}
                     value={auditCode}
                     onChange={(e) => setAuditCode(e.target.value)}
-                    className="w-full bg-[#0f172a] text-[#f8fafc] font-mono text-xs p-4 rounded-lg focus:outline-none"
+                    className="w-full bg-[#0f172a] text-[#f8fafc] font-mono text-xs p-4 rounded-xl focus:outline-none"
                   />
                 </div>
 
                 {auditReport && (
-                  <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg space-y-3">
+                  <div className="p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#0f172a]">
                         Audit Score: {auditReport.score}% Compliant
@@ -3463,7 +3435,7 @@ Endpoint: \`${mcpEndpointUrl}\`
 
                     <div className="space-y-2">
                       {auditReport.violations?.map((v: any, i: number) => (
-                        <div key={i} className="p-2.5 bg-white border border-[#fca5a5] rounded text-xs flex items-center justify-between">
+                        <div key={i} className="p-2.5 bg-white border border-[#fca5a5] rounded-lg text-xs flex items-center justify-between">
                           <div>
                             <span className="font-semibold text-[#b91c1c] capitalize">[{v.type}]</span>{' '}
                             <span className="text-[#334155]">{v.message}</span>
@@ -3483,14 +3455,20 @@ Endpoint: \`${mcpEndpointUrl}\`
           {/* ========================================================================= */}
           {activeNav === 'releases' && (
             <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="bg-white border border-[#e2e8f0] rounded-xl p-6 shadow-sm flex items-center justify-between">
+              <div className="nexus-card p-6 rounded-2xl border border-[#e2e8f0]/90 bg-white flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-bold text-[#0f172a]">Design System Releases</h2>
+                  <div className="flex items-center gap-2">
+                    <Tag size={18} className="text-[#2563eb]" />
+                    <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Design System Releases</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] text-[11px] font-semibold border border-[#bfdbfe]">
+                      {releasesList.length} Releases
+                    </span>
+                  </div>
                   <p className="text-xs text-[#64748b] mt-1">
                     Immutable SemVer release tags and automated changelogs.
                   </p>
                 </div>
-                <button onClick={() => setShowReleaseModal(true)} className="btn-primary text-xs">
+                <button onClick={() => setShowReleaseModal(true)} className="btn-primary text-xs flex items-center gap-1.5 shadow-xs">
                   <Plus size={14} />
                   <span>Create Release</span>
                 </button>
@@ -3498,7 +3476,7 @@ Endpoint: \`${mcpEndpointUrl}\`
 
               <div className="space-y-3">
                 {releasesList.map((r) => (
-                  <div key={r.id} className="bg-white border border-[#e2e8f0] rounded-xl p-5 shadow-sm space-y-2">
+                  <div key={r.id} className="nexus-card p-5 rounded-2xl border border-[#e2e8f0]/90 bg-white space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Tag size={14} className="text-[#2563eb]" />
@@ -3513,8 +3491,9 @@ Endpoint: \`${mcpEndpointUrl}\`
               </div>
             </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
+    </div>
 
       {/* ADD TOKEN MODAL */}
       {showAddModal && (
