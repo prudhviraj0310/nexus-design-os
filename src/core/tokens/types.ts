@@ -100,6 +100,7 @@ export interface FlatToken {
   designSystemId?: string;
   versionId?: string;
   brandId?: string;
+  groupId?: string | null;
   name: string;
   path: string; // e.g. "color.brand.primary" or "typography.heading.h1"
   category: TokenCategory;

@@ -24,6 +24,19 @@ describe('MCP Server: Project-Scoped Tools & Context Delivery', () => {
       'generate_code',
       'import_figma_variables',
       'propose_token_changes',
+      'list_contexts',
+      'get_context',
+      'submit_agent_feedback',
+      'list_documentation',
+      'get_documentation_page',
+      'list_assets',
+      'list_releases',
+      'list_pipelines',
+      'list_data_sources',
+      'list_background_jobs',
+      'create_feedback_job',
+      'resolve_context_resources',
+      'get_design_tokens_by_type',
     ]);
   });
 

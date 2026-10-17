@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db/index';
 import { tokens } from '@/db/schema';
+import { designSystems } from '@/db/schema';
+import { seedDatabase } from '@/db/seed';
 import { AuditEngine } from '@/core/audit/engine';
 import { FlatToken } from '@/core/tokens/types';
 import { validateApiAuth } from '@/server/auth';
+import { authorizeDesignSystem } from '@/server/governance';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: Request) {
   try {
@@ -19,9 +23,16 @@ export async function POST(request: Request) {
     }
 
     const { db } = await getDb();
+    const designSystemId = body.designSystemId || 'ds-nova-design';
+    if (process.env.NODE_ENV !== 'production') {
+      const existing = await db.select({ id: designSystems.id }).from(designSystems).where(eq(designSystems.id, designSystemId)).limit(1);
+      if (!existing[0]) await seedDatabase({ db });
+    }
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
     const dbTokens = await db.select().from(tokens);
+    const scopedTokens = dbTokens.filter((token: any) => token.designSystemId === designSystemId);
 
-    const flatTokens: FlatToken[] = dbTokens.map((t: any) => ({
+    const flatTokens: FlatToken[] = scopedTokens.map((t: any) => ({
       name: t.name,
       path: t.path,
       category: t.category,

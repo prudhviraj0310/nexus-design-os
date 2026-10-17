@@ -6,14 +6,19 @@ import { eq } from 'drizzle-orm';
 import { validateTokens } from '@/core/tokens/validator';
 import { FlatToken } from '@/core/tokens/types';
 import { validateApiAuth } from '@/server/auth';
+import { authorizeDesignSystem } from '@/server/governance';
 
 export async function GET(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const dsId = searchParams.get('designSystemId') || searchParams.get('ds');
 
     const { db } = await getDb();
+    const targetDs = dsId || 'ds-nova-design';
+    await authorizeDesignSystem(db, auth.userId, targetDs);
     let allTokens = await db.select().from(tokens);
 
     if (allTokens.length === 0) {
@@ -22,9 +27,7 @@ export async function GET(request: Request) {
     }
 
     let filtered = allTokens;
-    if (dsId) {
-      filtered = filtered.filter((t: any) => t.designSystemId === dsId);
-    }
+    filtered = filtered.filter((t: any) => t.designSystemId === targetDs);
     if (category && category !== 'all') {
       filtered = filtered.filter((t: any) => t.category === category);
     }
@@ -68,6 +71,7 @@ export async function POST(request: Request) {
     const aliasTarget = isAlias ? rawValue.slice(1, -1).trim() : null;
 
     const { db } = await getDb();
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
     const tokenId = `tok-${path.replace(/\./g, '-')}`;
 
     // Validate token format
@@ -151,6 +155,9 @@ export async function DELETE(request: Request) {
     }
 
     const { db } = await getDb();
+    const target = await db.select().from(tokens).where(eq(tokens.id, tokenId)).limit(1);
+    if (!target[0]) return NextResponse.json({ success: false, error: 'Token not found' }, { status: 404 });
+    await authorizeDesignSystem(db, auth.userId, target[0].designSystemId);
     await db.delete(tokens).where(eq(tokens.id, tokenId));
 
     return NextResponse.json({ success: true, deletedId: tokenId });

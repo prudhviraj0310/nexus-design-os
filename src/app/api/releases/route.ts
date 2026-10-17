@@ -1,24 +1,40 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db/index';
-import { releases, designSystems, tokens, components } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { docApprovals, docPages, releases } from '@/db/schema';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { seedDatabase } from '@/db/seed';
 import { validateApiAuth } from '@/server/auth';
+import { VersionManager } from '@/core/versions/version-manager';
+import { authorizeDesignSystem } from '@/server/governance';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = validateApiAuth(request);
+  if (!auth.authorized) return auth.errorResponse!;
   try {
+    const { searchParams } = new URL(request.url);
+    const designSystemId = searchParams.get('designSystemId') || 'ds-nova-design';
+
     const { db } = await getDb();
-    let allReleases = await db.select().from(releases).orderBy(desc(releases.createdAt));
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
+    let allReleases = await db.select().from(releases)
+      .where(eq(releases.designSystemId, designSystemId))
+      .orderBy(desc(releases.createdAt));
 
     if (allReleases.length === 0) {
       await seedDatabase();
-      allReleases = await db.select().from(releases).orderBy(desc(releases.createdAt));
+      allReleases = await db.select().from(releases)
+        .where(eq(releases.designSystemId, designSystemId))
+        .orderBy(desc(releases.createdAt));
     }
+
+    const versionManager = new VersionManager(db);
+    const versions = await versionManager.listVersions(designSystemId);
 
     return NextResponse.json({
       success: true,
       totalCount: allReleases.length,
       releases: allReleases,
+      versions,
     });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -36,6 +52,8 @@ export async function POST(request: Request) {
       title,
       description = '',
       changelog = '',
+      designSystemId = 'ds-nova-design',
+      triggerPipelines = true,
     } = body;
 
     if (!version || !title) {
@@ -46,37 +64,40 @@ export async function POST(request: Request) {
     }
 
     const { db } = await getDb();
-    const allTokens = await db.select().from(tokens);
-    const allComponents = await db.select().from(components);
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
+    const pages = await db.select({ id: docPages.id }).from(docPages)
+      .where(eq(docPages.designSystemId, designSystemId));
+    if (pages.length > 0) {
+      const pendingApprovals = await db.select({ id: docApprovals.id }).from(docApprovals)
+        .where(and(inArray(docApprovals.pageId, pages.map((page: { id: string }) => page.id)), eq(docApprovals.status, 'pending')));
+      if (pendingApprovals.length > 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'Release blocked: documentation approval requests are still pending.',
+          code: 'PENDING_DOCUMENTATION_APPROVALS',
+          pendingApprovalCount: pendingApprovals.length,
+        }, { status: 409 });
+      }
+    }
+    const versionManager = new VersionManager(db);
 
-    const releaseId = `rel-${version.replace(/\./g, '-')}-${Date.now().toString(36)}`;
-    const designSystemId = body.designSystemId || 'ds-nova-design';
-
-    const newRelease = {
-      id: releaseId,
+    const result = await versionManager.releaseVersion({
       designSystemId,
       version,
       title,
       description,
-      tokensCount: allTokens.length,
-      componentsCount: allComponents.length,
-      changelog: changelog || `Automated release v${version} with ${allTokens.length} design tokens.`,
-      createdAt: new Date(),
-    };
-
-    await db.transaction(async (tx: any) => {
-      await tx.insert(releases).values(newRelease);
-
-      // Update active design system version atomically
-      await tx
-        .update(designSystems)
-        .set({ version })
-        .where(eq(designSystems.id, designSystemId));
+      changelog,
+      triggerPipelines,
     });
 
     return NextResponse.json({
       success: true,
-      release: newRelease,
+      release: result.release,
+      version: result.version,
+      tokensCopied: result.tokensCopied,
+      themesCopied: result.themesCopied,
+      groupsCopied: result.groupsCopied,
+      pipelineResults: result.pipelineResults,
     });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

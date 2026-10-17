@@ -1,0 +1,38 @@
+name: Publish native design-system packages
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  swift:
+    if: ${{ secrets.COCOAPODS_TRUNK_TOKEN != '' }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift package dump-package
+        working-directory: packages/ios
+      - run: pod lib lint NexusDesignTokens.podspec --allow-warnings
+        working-directory: packages/ios
+      - run: pod trunk push NexusDesignTokens.podspec --allow-warnings
+        working-directory: packages/ios
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+
+  android:
+    if: ${{ secrets.MAVEN_REPOSITORY_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: gradle publish
+        working-directory: packages/android
+        env:
+          MAVEN_REPOSITORY_URL: ${{ secrets.MAVEN_REPOSITORY_URL }}
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}

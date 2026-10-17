@@ -4,7 +4,7 @@ import { parseDTCGTree } from '../core/tokens/parser';
 import { resolveTokenAliases } from '../core/tokens/resolver';
 
 export async function seedDatabase(customDb?: any) {
-  const { db } = customDb ? customDb : await getDb();
+  const db = customDb?.db ? customDb.db : customDb && typeof customDb.insert === 'function' ? customDb : (await getDb()).db;
 
   const workspaceId = 'ws-acme-corp';
   const projectId = 'proj-core-web';

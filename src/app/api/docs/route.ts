@@ -4,6 +4,7 @@ import { docPages } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { seedDatabase } from '@/db/seed';
 import { validateApiAuth } from '@/server/auth';
+import { authorizeDesignSystem, hasWorkspacePermission } from '@/server/governance';
 
 export async function GET(request: Request) {
   try {
@@ -12,11 +13,18 @@ export async function GET(request: Request) {
     const slug = searchParams.get('slug');
 
     const { db } = await getDb();
+    const designSystemId = searchParams.get('designSystemId') || 'ds-nova-design';
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+    const authorization = await authorizeDesignSystem(db, auth.userId, designSystemId);
     let pages = await db.select().from(docPages).orderBy(asc(docPages.order));
+    const canEditDocs = hasWorkspacePermission(authorization.principal.role, 'docs:edit');
+    pages = pages.filter((page: any) => page.designSystemId === designSystemId && (page.isPublished || canEditDocs));
 
     if (pages.length === 0) {
-      await seedDatabase();
+      await seedDatabase({ db });
       pages = await db.select().from(docPages).orderBy(asc(docPages.order));
+      pages = pages.filter((page: any) => page.designSystemId === designSystemId && (page.isPublished || canEditDocs));
     }
 
     if (slug) {
@@ -48,17 +56,28 @@ export async function POST(request: Request) {
     if (!auth.authorized) return auth.errorResponse!;
 
     const body = await request.json();
-    const { slug, title, category = 'foundations', content, order = 0, isPublished = true } = body;
+    const { slug, title, category = 'foundations', order = 0, isPublished = true } = body;
+    let content = body.content;
+    let blocks = body.blocks;
 
-    if (!slug || !title || !content) {
+    if (!blocks && content) {
+      const { markdownToBlocks } = await import('@/core/docs/blocks');
+      blocks = markdownToBlocks(content);
+    } else if (blocks && !content) {
+      const { blocksToMarkdown } = await import('@/core/docs/blocks');
+      content = blocksToMarkdown(blocks);
+    }
+
+    if (!slug || !title || (!content && !blocks)) {
       return NextResponse.json(
-        { success: false, error: 'slug, title, and content are required.' },
+        { success: false, error: 'slug, title, and content or blocks are required.' },
         { status: 400 }
       );
     }
 
     const { db } = await getDb();
     const designSystemId = body.designSystemId || 'ds-nova-design';
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
     const id = body.id || `doc-${slug.toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`;
 
     await db
@@ -69,7 +88,8 @@ export async function POST(request: Request) {
         slug,
         title,
         category,
-        content,
+        content: content || '',
+        blocks: blocks || null,
         order,
         isPublished,
       })
@@ -78,7 +98,8 @@ export async function POST(request: Request) {
         set: {
           title,
           category,
-          content,
+          content: content || '',
+          blocks: blocks || null,
           order,
           isPublished,
           updatedAt: new Date(),
@@ -108,6 +129,9 @@ export async function DELETE(request: Request) {
     }
 
     const { db } = await getDb();
+    const page = await db.select().from(docPages).where(eq(docPages.id, id)).limit(1);
+    if (!page[0]) return NextResponse.json({ success: false, error: 'Page not found' }, { status: 404 });
+    await authorizeDesignSystem(db, auth.userId, page[0].designSystemId);
     await db.delete(docPages).where(eq(docPages.id, id));
 
     return NextResponse.json({ success: true, deletedId: id });

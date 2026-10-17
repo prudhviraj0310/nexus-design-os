@@ -8,7 +8,11 @@ node_modules/
 out/
 dist/
 build/
+.gradle/
+**/build/
+**/.gradle/
 tsconfig.tsbuildinfo
+
 
 # Local Database
 .data/
@@ -34,4 +38,8 @@ test-all-endpoints.sh
 testing.pem
 *.pem
 *.zip
+chat-opus.js
+launch-claude.sh
+scripts/claude-proxy.js
+
 

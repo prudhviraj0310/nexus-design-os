@@ -279,11 +279,102 @@ export function PrimaryCard() {
     URL.revokeObjectURL(url);
   };
 
+  // Authentication & Session Management
+  const [authRequired, setAuthRequired] = useState<boolean>(false);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [apiKeyInput, setApiKeyInput] = useState<string>('');
+  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'unauthorized'>('checking');
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  const checkAuthStatus = async () => {
+    try {
+      const res = await fetch('/api/auth');
+      const data = await res.json();
+      if (data.authenticated) {
+        setAuthStatus('authenticated');
+        setAuthUserId(data.userId);
+        setAuthRequired(false);
+      } else if (data.authRequired) {
+        setAuthStatus('unauthorized');
+        setAuthRequired(true);
+      } else {
+        setAuthStatus('authenticated');
+        setAuthRequired(false);
+      }
+    } catch {
+      setAuthStatus('authenticated');
+    }
+  };
+
+  const apiFetch = async (url: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers || {});
+    const key = (typeof window !== 'undefined' ? localStorage.getItem('nexus_api_key') : null) || apiKeyInput;
+    if (key && !headers.has('Authorization') && !headers.has('x-api-key')) {
+      headers.set('x-api-key', key);
+    }
+    const res = await fetch(url, { ...init, headers, credentials: 'same-origin' });
+    if (res.status === 401) {
+      setAuthRequired(true);
+      setAuthStatus('unauthorized');
+    } else if (res.ok) {
+      setAuthStatus('authenticated');
+    }
+    return res;
+  };
+
+  const handleAuthenticate = async (tokenToUse?: string) => {
+    const key = (tokenToUse !== undefined ? tokenToUse : apiKeyInput).trim();
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: key }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (key) {
+          localStorage.setItem('nexus_api_key', key);
+          document.cookie = `nexus_api_key=${encodeURIComponent(key)}; path=/; max-age=2592000; SameSite=Lax`;
+        }
+        setAuthRequired(false);
+        setShowAuthModal(false);
+        setAuthStatus('authenticated');
+        setAuthUserId(data.userId);
+        await Promise.all([
+          loadTokens(),
+          loadComponents(),
+          loadAssets(),
+          loadDocPages(),
+          loadReleases(),
+          loadExport(exportFormat),
+        ]);
+      } else {
+        alert(data.error || 'Authentication failed. Please verify your credentials.');
+      }
+    } catch (err: any) {
+      alert(`Error authenticating: ${err.message}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth', { method: 'DELETE' });
+      localStorage.removeItem('nexus_api_key');
+      document.cookie = 'nexus_api_key=; path=/; max-age=0;';
+      setAuthStatus('unauthorized');
+      setAuthUserId(null);
+      setAuthRequired(true);
+      setShowAuthModal(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // 1. Initial Load: Tokens, Components, Releases
   const loadTokens = async () => {
     try {
       setLoadingTokens(true);
-      const res = await fetch('/api/tokens');
+      const res = await apiFetch('/api/tokens');
       const data = await res.json();
       if (data.tokens) {
         setTokens(data.tokens);
@@ -300,7 +391,7 @@ export function PrimaryCard() {
 
   const loadComponents = async () => {
     try {
-      const res = await fetch('/api/components');
+      const res = await apiFetch('/api/components');
       const data = await res.json();
       if (data.components) {
         setComponents(data.components);
@@ -315,7 +406,7 @@ export function PrimaryCard() {
 
   const loadReleases = async () => {
     try {
-      const res = await fetch('/api/releases');
+      const res = await apiFetch('/api/releases');
       const data = await res.json();
       if (data.releases) {
         setReleasesList(data.releases);
@@ -329,7 +420,7 @@ export function PrimaryCard() {
     try {
       setLoadingExport(true);
       setExportFormat(format as any);
-      const res = await fetch(`/api/export?format=${format}`);
+      const res = await apiFetch(`/api/export?format=${format}`);
       const data = await res.json();
       setExportedContent(data);
     } catch (err) {
@@ -343,7 +434,7 @@ export function PrimaryCard() {
   const loadGithubRepos = async () => {
     try {
       setLoadingRepos(true);
-      const res = await fetch('/api/github/repos');
+      const res = await apiFetch('/api/github/repos');
       const data = await res.json();
       if (data.success && data.repos) {
         setGithubRepos(data.repos);
@@ -364,7 +455,7 @@ export function PrimaryCard() {
 
   const checkGithubStatus = async () => {
     try {
-      const res = await fetch('/api/github/connect');
+      const res = await apiFetch('/api/github/connect');
       const data = await res.json();
       setOauthAvailable(Boolean(data.oauthAvailable));
       if (data.appSlug) setAppSlug(data.appSlug);
@@ -391,7 +482,7 @@ export function PrimaryCard() {
     if (!customGithubToken.trim()) return;
     try {
       setConnectingGithub(true);
-      const res = await fetch('/api/github/connect', {
+      const res = await apiFetch('/api/github/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: customGithubToken.trim() }),
@@ -418,7 +509,7 @@ export function PrimaryCard() {
   const handleDisconnectGithub = async () => {
     if (!confirm('Disconnect your GitHub account from Nexus Design OS?')) return;
     try {
-      await fetch('/api/github/connect', { method: 'DELETE' });
+      await apiFetch('/api/github/connect', { method: 'DELETE' });
       setGithubConnected(false);
       setGithubUser(null);
       setAuthMethod(null);
@@ -433,7 +524,7 @@ export function PrimaryCard() {
   const loadAssets = async () => {
     try {
       setLoadingAssets(true);
-      const res = await fetch('/api/assets');
+      const res = await apiFetch('/api/assets');
       const data = await res.json();
       if (data.assets) {
         setAssetsList(data.assets);
@@ -456,7 +547,7 @@ export function PrimaryCard() {
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean);
-      const res = await fetch('/api/assets', {
+      const res = await apiFetch('/api/assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -484,7 +575,7 @@ export function PrimaryCard() {
   const loadDocPages = async () => {
     try {
       setLoadingDocPages(true);
-      const res = await fetch('/api/docs');
+      const res = await apiFetch('/api/docs');
       const data = await res.json();
       if (data.pages) {
         setDocPagesList(data.pages);
@@ -505,7 +596,7 @@ export function PrimaryCard() {
     if (!selectedDocPage) return;
     setSavingDocPage(true);
     try {
-      const res = await fetch('/api/docs', {
+      const res = await apiFetch('/api/docs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -532,17 +623,15 @@ export function PrimaryCard() {
   };
 
   useEffect(() => {
-    loadTokens();
-    loadComponents();
-    loadAssets();
-    loadDocPages();
-    loadReleases();
-    loadExport('tailwind');
-    checkGithubStatus();
-
-    // Check URL search params for GitHub App installation or OAuth callback result
+    // Check URL search params for apiKey, GitHub App installation, or OAuth callback result
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
+      const urlApiKey = urlParams.get('apiKey') || urlParams.get('token') || urlParams.get('api_key');
+      if (urlApiKey) {
+        localStorage.setItem('nexus_api_key', urlApiKey);
+        document.cookie = `nexus_api_key=${encodeURIComponent(urlApiKey)}; path=/; max-age=2592000; SameSite=Lax`;
+        setApiKeyInput(urlApiKey);
+      }
       if (urlParams.get('github') === 'installed' || urlParams.get('github') === 'connected') {
         checkGithubStatus();
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -557,6 +646,15 @@ export function PrimaryCard() {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
+
+    checkAuthStatus();
+    loadTokens();
+    loadComponents();
+    loadAssets();
+    loadDocPages();
+    loadReleases();
+    loadExport('tailwind');
+    checkGithubStatus();
   }, []);
 
   // 2. Add Token Action
@@ -564,7 +662,7 @@ export function PrimaryCard() {
     e.preventDefault();
     setSavingToken(true);
     try {
-      const res = await fetch('/api/tokens', {
+      const res = await apiFetch('/api/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -593,7 +691,7 @@ export function PrimaryCard() {
   const handleDeleteToken = async (id: string) => {
     if (!confirm('Are you sure you want to remove this design token?')) return;
     try {
-      const res = await fetch(`/api/tokens?id=${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/tokens?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         await loadTokens();
@@ -612,7 +710,7 @@ export function PrimaryCard() {
       setFigmaDiffCommitSuccess(false);
     }
     try {
-      const res = await fetch('/api/figma/sync', {
+      const res = await apiFetch('/api/figma/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -646,7 +744,7 @@ export function PrimaryCard() {
     setDeliveryResult(null);
     try {
       const [owner, name] = targetRepo.includes('/') ? targetRepo.split('/') : ['acme-corp', targetRepo];
-      const res = await fetch('/api/deliver', {
+      const res = await apiFetch('/api/deliver', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -673,7 +771,7 @@ export function PrimaryCard() {
   const handleRunAudit = async () => {
     setAuditing(true);
     try {
-      const res = await fetch('/api/audit', {
+      const res = await apiFetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -695,7 +793,7 @@ export function PrimaryCard() {
     e.preventDefault();
     setPublishingRelease(true);
     try {
-      const res = await fetch('/api/releases', {
+      const res = await apiFetch('/api/releases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -722,7 +820,7 @@ export function PrimaryCard() {
   const handleTestMcp = async () => {
     setTestingMcp(true);
     try {
-      const res = await fetch('/api/mcp', {
+      const res = await apiFetch('/api/mcp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1142,6 +1240,20 @@ Endpoint: \`${mcpEndpointUrl}\`
               <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
               <span>MCP Server Live</span>
             </div>
+
+            {/* Auth Session / Access Pill */}
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                authStatus === 'authenticated'
+                  ? 'bg-[#f0fdf4] border-[#bbf7d0] text-[#166534] hover:bg-[#dcfce7]'
+                  : 'bg-[#fef2f2] border-[#fecaca] text-[#991b1b] hover:bg-[#fee2e2]'
+              }`}
+              title="Click to configure authentication / API key"
+            >
+              <Lock size={12} className={authStatus === 'authenticated' ? 'text-[#16a34a]' : 'text-[#dc2626]'} />
+              <span>{authStatus === 'authenticated' ? (authUserId ? `Auth: ${authUserId}` : 'Authenticated') : 'Auth Required'}</span>
+            </button>
 
             {/* Quick Action Button */}
             {activeNav === 'tokens' && (
@@ -3761,6 +3873,101 @@ Endpoint: \`${mcpEndpointUrl}\`
               >
                 Close Dialog
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AUTHENTICATION & TESTING SESSION MODAL */}
+      {(showAuthModal || authRequired) && (
+        <div className="fixed inset-0 bg-[#0f172a]/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#eff6ff] rounded-lg text-[#2563eb]">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0f172a]">Authentication & Access</h3>
+                  <p className="text-[11px] text-[#64748b]">Configure your server credentials for local or AWS testing</p>
+                </div>
+              </div>
+              {!authRequired && (
+                <button onClick={() => setShowAuthModal(false)} className="text-[#94a3b8] hover:text-[#0f172a] text-sm p-1 rounded-lg">✕</button>
+              )}
+            </div>
+
+            {authRequired && (
+              <div className="p-3 bg-[#fff7ed] border border-[#ffedd5] rounded-xl text-xs text-[#c2410c] flex items-start gap-2.5">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Authorization Required</p>
+                  <p className="text-[11px] mt-0.5 text-[#9a3412]">
+                    This server instance requires an authorized API Key or Admin Password to access design system tokens and APIs.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-[#334155] block mb-1">
+                  API Key / Admin Token
+                </label>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="Enter NOVA_API_KEY, NEXUS_API_KEY, or Admin Password"
+                  className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3.5 py-2 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAuthenticate();
+                  }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-[#64748b]">
+                  {authStatus === 'authenticated' ? `Active Principal: ${authUserId || 'operator'}` : 'Not connected'}
+                </span>
+                {authStatus === 'authenticated' && (
+                  <button
+                    onClick={handleLogout}
+                    className="text-[11px] text-[#ef4444] hover:underline flex items-center gap-1"
+                  >
+                    <LogOut size={11} /> Clear Session
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => handleAuthenticate('dev-user')}
+                className="px-3 py-2 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#334155] rounded-xl text-xs font-medium transition-all"
+                title="Use development bypass if configured on the server"
+              >
+                ⚡ Dev Bypass
+              </button>
+              <div className="flex items-center gap-2">
+                {!authRequired && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(false)}
+                    className="px-3.5 py-2 border border-[#cbd5e1] text-[#475569] hover:bg-[#f8fafc] rounded-xl text-xs font-medium"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleAuthenticate()}
+                  className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+                >
+                  Save & Authenticate
+                </button>
+              </div>
             </div>
           </div>
         </div>

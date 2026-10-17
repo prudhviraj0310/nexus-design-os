@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getDb } from '@/db/index';
 import { tokens, deliveryJobs } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { FlatToken } from '@/core/tokens/types';
 import { exportToCss } from '@/core/exporters/css';
 import { exportToTypeScript } from '@/core/exporters/typescript';
@@ -9,9 +10,10 @@ import { exportToTailwind } from '@/core/exporters/tailwind';
 import { exportToSwift } from '@/core/exporters/swift';
 import { exportToKotlin } from '@/core/exporters/kotlin';
 import { exportToJson } from '@/core/exporters/json';
-import { GitHubDeliveryEngine } from '@/core/delivery/github';
+import { getDeliveryEngine } from '@/core/delivery/index';
 import { validateApiAuth } from '@/server/auth';
 import { env } from '@/server/env';
+import { authorizeDesignSystem } from '@/server/governance';
 import {
   getGitHubInstallation,
   getInstallationAccessToken,
@@ -155,19 +157,47 @@ export async function POST(request: Request) {
     // Default dryRun to true: safe by default unless explicitly set to false
     const dryRun = body.dryRun !== undefined ? Boolean(body.dryRun) : true;
 
-    // Fail immediately if live delivery is requested but credentials are absent
-    if (!dryRun && !githubToken) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Live delivery requested but no GitHub token was provided or configured on the server.',
-        },
-        { status: 400 }
-      );
+    const provider = (body.provider || 'github').toLowerCase() as 'github' | 'gitlab' | 'bitbucket';
+    const gitlabToken = body.gitlabToken || process.env.GITLAB_TOKEN;
+    const bitbucketToken = body.bitbucketToken || process.env.BITBUCKET_TOKEN;
+    const bitbucketUsername = body.bitbucketUsername || process.env.BITBUCKET_USERNAME;
+    const bitbucketAppPassword = body.bitbucketAppPassword || process.env.BITBUCKET_APP_PASSWORD;
+    const directoryPurge = Boolean(body.directoryPurge);
+    const targetDirectory = body.targetDirectory;
+
+    // Fail immediately if live delivery is requested but credentials are absent for the provider
+    if (!dryRun) {
+      if (provider === 'github' && !githubToken) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Live delivery requested but no GitHub token was provided or configured on the server.',
+          },
+          { status: 400 }
+        );
+      } else if (provider === 'gitlab' && !gitlabToken) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Live delivery requested but no GitLab token was provided or configured on the server.',
+          },
+          { status: 400 }
+        );
+      } else if (provider === 'bitbucket' && !bitbucketToken && !(bitbucketUsername && bitbucketAppPassword)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Live delivery requested but no Bitbucket credentials were provided or configured on the server.',
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const { db } = await getDb();
-    const dbTokens = await db.select().from(tokens);
+    const designSystemId = body.designSystemId || 'ds-nova-design';
+    const authorization = await authorizeDesignSystem(db, auth.userId, designSystemId);
+    const dbTokens = await db.select().from(tokens).where(eq(tokens.designSystemId, designSystemId));
 
     const flatTokens: FlatToken[] = dbTokens.map((t: any) => ({
       name: t.name,
@@ -189,19 +219,26 @@ export async function POST(request: Request) {
     const kotlin = exportToKotlin(flatTokens);
     const json = exportToJson(flatTokens);
 
-    const deliveryEngine = new GitHubDeliveryEngine();
+    const deliveryEngine = getDeliveryEngine(provider);
     const result = await deliveryEngine.deliver({
-      projectId: 'proj-core-web',
+      projectId: authorization.designSystem.projectId,
+      provider,
       repoOwner,
       repoName,
       baseBranch,
       newBranchName,
-      commitMessage: 'feat(tokens): automated release from Nexus Design OS',
+      commitMessage: body.commitMessage || 'feat(tokens): automated release from Nexus Design OS',
       prTitle,
       prBody,
       files: [css, ts, tailwind, swift, kotlin, json],
       githubToken,
+      gitlabToken,
+      bitbucketToken,
+      bitbucketUsername,
+      bitbucketAppPassword,
       dryRun,
+      directoryPurge,
+      targetDirectory,
     });
 
     // Record job in database (distinguishing simulated dry-runs from actual live deliveries)

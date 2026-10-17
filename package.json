@@ -4,20 +4,28 @@
   "description": "Nexus Design OS — The Enterprise Design System Operating System & AI Context Engine",
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
     "build:next": "next build",
-    "start": "next start -p 3000",
-    "build": "tsc",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "mcp": "tsx src/mcp/server.ts",
-    "cli": "tsx src/cli/index.ts"
+    "cli": "tsx src/cli/index.ts",
+    "worker": "tsx src/worker/index.ts",
+    "worker:continuous": "tsx src/worker/index.ts --continuous",
+    "collaboration": "tsx src/collaboration/server.ts",
+    "build:mobile-sdk": "npm run build --workspace=@nexus-design-os/mobile-sdk",
+    "smoke:postgres": "tsx scripts/postgres-concurrency-smoke.ts"
   },
+  "workspaces": ["packages/*"],
   "dependencies": {
     "@babel/parser": "^8.0.7",
     "@babel/traverse": "^8.0.7",
     "@electric-sql/pglite": "^0.2.14",
     "@modelcontextprotocol/sdk": "^1.6.1",
+    "@types/ws": "^8.18.2",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.55.0",
@@ -25,6 +33,7 @@
     "pg": "^8.23.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "ws": "^8.22.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

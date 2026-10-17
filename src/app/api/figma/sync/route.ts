@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db/index';
-import { tokens } from '@/db/schema';
+import { brands, designSystemVersions, designSystems, tokens } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { FigmaClient } from '@/core/figma/client';
 import { mapFigmaVariablesToDTCG } from '@/core/figma/mapper';
@@ -8,6 +8,7 @@ import { computeTokenDiff } from '@/core/figma/diff';
 import { resolveTokenAliases } from '@/core/tokens/resolver';
 import { FlatToken } from '@/core/tokens/types';
 import { validateApiAuth } from '@/server/auth';
+import { authorizeDesignSystem } from '@/server/governance';
 
 export async function POST(request: Request) {
   try {
@@ -45,6 +46,44 @@ export async function POST(request: Request) {
     const { tokens: resolvedIncoming, cycles, unresolvedAliases } = resolveTokenAliases(mappedTokens);
 
     const { db } = await getDb();
+    const [designSystem] = await db.select({ id: designSystems.id }).from(designSystems).where(eq(designSystems.id, designSystemId)).limit(1);
+
+    if (dryRun && !designSystem) {
+      return NextResponse.json({
+        success: true,
+        fileKey,
+        modeName,
+        designSystemId,
+        totalVariablesFound: mappedTokens.length,
+        diff: computeTokenDiff([], resolvedIncoming),
+        applied: false,
+        dryRun: true,
+        appliedCount: 0,
+        deletedCount: 0,
+        cycles: cycles || [],
+        unresolvedAliases: unresolvedAliases || [],
+      });
+    }
+
+    if (dryRun) {
+      await authorizeDesignSystem(db, auth.userId, designSystemId);
+    } else {
+      await authorizeDesignSystem(db, auth.userId, designSystemId);
+      await db.insert(brands).values({
+        id: `brand-default-${designSystemId}`,
+        designSystemId,
+        name: 'Default Brand',
+        codeName: 'default',
+        isDefault: true,
+      }).onConflictDoNothing();
+      await db.insert(designSystemVersions).values({
+        id: `ver-draft-${designSystemId}`,
+        designSystemId,
+        name: 'Draft',
+        isDraft: true,
+        isReadOnly: false,
+      }).onConflictDoNothing();
+    }
     // Strictly scope selection to current design system / project
     const existingDbTokens = await db
       .select()

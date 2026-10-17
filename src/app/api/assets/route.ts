@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/db/index';
-import { assets } from '@/db/schema';
+import { assets, designSystems } from '@/db/schema';
 import { seedDatabase } from '@/db/seed';
 import { validateApiAuth } from '@/server/auth';
+import { authorizeDesignSystem } from '@/server/governance';
+import { eq } from 'drizzle-orm';
 
 /**
  * Validates and sanitizes vector SVG markup against XSS, scripts, and malicious entities.
@@ -46,6 +48,10 @@ export async function GET(request: Request) {
     const query = searchParams.get('q')?.toLowerCase();
 
     const { db } = await getDb();
+    const designSystemId = searchParams.get('designSystemId') || 'ds-nova-design';
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
     let allAssets = await db.select().from(assets);
 
     if (allAssets.length === 0) {
@@ -53,7 +59,7 @@ export async function GET(request: Request) {
       allAssets = await db.select().from(assets);
     }
 
-    let filtered = allAssets;
+    let filtered = allAssets.filter((asset: any) => asset.designSystemId === designSystemId);
     if (category && category !== 'all') {
       filtered = filtered.filter((a: any) => a.category === category);
     }
@@ -101,6 +107,11 @@ export async function POST(request: Request) {
     const { db } = await getDb();
     const id = `ast-${name.toLowerCase().replace(/[^a-z0-9_-]/g, '-')}-${Date.now()}`;
     const designSystemId = body.designSystemId || 'ds-nova-design';
+    if (process.env.NODE_ENV !== 'production') {
+      const existing = await db.select().from(designSystems).where(eq(designSystems.id, designSystemId)).limit(1);
+      if (!existing[0]) await seedDatabase({ db });
+    }
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
 
     await db.insert(assets).values({
       id,

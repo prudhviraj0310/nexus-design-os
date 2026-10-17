@@ -3,10 +3,15 @@ import { getDb } from '@/db/index';
 import { components } from '@/db/schema';
 import { seedDatabase } from '@/db/seed';
 import { validateApiAuth } from '@/server/auth';
+import { authorizeDesignSystem } from '@/server/governance';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = validateApiAuth(request);
+    if (!auth.authorized) return auth.errorResponse!;
+    const designSystemId = new URL(request.url).searchParams.get('designSystemId') || 'ds-nova-design';
     const { db } = await getDb();
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
     let allComponents = await db.select().from(components);
 
     if (allComponents.length === 0) {
@@ -14,6 +19,7 @@ export async function GET() {
       allComponents = await db.select().from(components);
     }
 
+    allComponents = allComponents.filter((component: any) => component.designSystemId === designSystemId);
     return NextResponse.json({
       success: true,
       count: allComponents.length,
@@ -47,6 +53,7 @@ export async function POST(request: Request) {
     }
 
     const { db } = await getDb();
+    await authorizeDesignSystem(db, auth.userId, designSystemId);
     const id = `comp-${name.toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`;
 
     await db

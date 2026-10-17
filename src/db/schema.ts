@@ -7,6 +7,60 @@ export const workspaces = pgTable('workspaces', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const users = pgTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  displayName: text('display_name').notNull(),
+  status: text('status').notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const workspaceMembers = pgTable('workspace_members', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull().default('member'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const planSubscriptions = pgTable('plan_subscriptions', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  plan: text('plan').notNull().default('free'),
+  status: text('status').notNull().default('active'),
+  seatsLimit: integer('seats_limit').notNull().default(5),
+  systemsLimit: integer('systems_limit').notNull().default(1),
+  contextsLimit: integer('contexts_limit').notNull().default(1),
+  monthlyAiCredits: integer('monthly_ai_credits').notNull().default(100),
+  periodStartedAt: timestamp('period_started_at').defaultNow().notNull(),
+  periodEndsAt: timestamp('period_ends_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const usageCounters = pgTable('usage_counters', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  metric: text('metric').notNull(),
+  periodKey: text('period_key').notNull(),
+  value: integer('value').notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const auditEvents = pgTable('audit_events', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
+  actorUserId: text('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+  action: text('action').notNull(),
+  resourceType: text('resource_type').notNull(),
+  resourceId: text('resource_id'),
+  metadata: jsonb('metadata'),
+  ipAddress: text('ip_address'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const projects = pgTable('projects', {
   id: text('id').primaryKey(),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -45,12 +99,28 @@ export const brands = pgTable('brands', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const tokenGroups = pgTable('token_groups', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  versionId: text('version_id').references(() => designSystemVersions.id, { onDelete: 'cascade' }),
+  parentId: text('parent_id'),
+  name: text('name').notNull(),
+  description: text('description'),
+  tokenType: text('token_type'),
+  path: text('path').notNull(), // e.g. "color/brand"
+  order: integer('order').notNull().default(0),
+  isRoot: boolean('is_root').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const tokens = pgTable('tokens', {
   id: text('id').primaryKey(),
   persistentId: text('persistent_id'),
   designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
   versionId: text('version_id').references(() => designSystemVersions.id, { onDelete: 'cascade' }),
   brandId: text('brand_id').references(() => brands.id, { onDelete: 'set null' }),
+  groupId: text('group_id').references(() => tokenGroups.id, { onDelete: 'set null' }),
   originSourceId: text('origin_source_id'),
   name: text('name').notNull(),
   path: text('path').notNull(), // e.g. "color.brand.primary"
@@ -114,6 +184,11 @@ export const components = pgTable('components', {
   variants: jsonb('variants'),
   codeSnippet: text('code_snippet'),
   tokenDependencies: jsonb('token_dependencies'), // List of token paths it relies on
+  packageName: text('package_name'), // e.g. "@nexus/ui"
+  repositoryName: text('repository_name'), // e.g. "acme-corp/web-ui"
+  filePath: text('file_path'), // e.g. "src/components/Button/Button.tsx"
+  exportName: text('export_name'), // e.g. "Button"
+  status: text('status').notNull().default('ready'), // "ready" | "in-progress" | "deprecated" | "planned"
   isDeprecated: boolean('is_deprecated').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -173,7 +248,182 @@ export const docPages = pgTable('doc_pages', {
   title: text('title').notNull(),
   category: text('category').notNull(), // "welcome" | "foundations" | "components" | "ai" | "automation"
   content: text('content').notNull(), // Markdown or structured blocks
+  blocks: jsonb('blocks'), // Structured JSON AST of DocBlock[]
   order: integer('order').notNull().default(0),
   isPublished: boolean('is_published').notNull().default(true),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const deliveryPipelines = pgTable('delivery_pipelines', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  provider: text('provider').notNull().default('github'), // 'github' | 'gitlab' | 'bitbucket'
+  trigger: text('trigger').notNull().default('OnVersionReleased'), // 'OnVersionReleased' | 'OnHeadChanged' | 'OnSourceUpdated' | 'Manual'
+  repoOwner: text('repo_owner').notNull(),
+  repoName: text('repo_name').notNull(),
+  targetBranch: text('target_branch').notNull().default('main'),
+  createPullRequest: boolean('create_pull_request').notNull().default(true),
+  exporters: jsonb('exporters').notNull(), // string[]: ['css', 'typescript', 'tailwind']
+  directoryPurge: boolean('directory_purge').notNull().default(false),
+  commitMessageTemplate: text('commit_message_template'),
+  prTitleTemplate: text('pr_title_template'),
+  prBodyTemplate: text('pr_body_template'),
+  enabled: boolean('enabled').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const dataSources = pgTable('data_sources', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  projectId: text('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(), // figma | storybook | tokens-studio | github | gitlab | bitbucket
+  name: text('name').notNull(),
+  config: jsonb('config').notNull(),
+  status: text('status').notNull().default('active'),
+  lastSyncedAt: timestamp('last_synced_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const syncJobs = pgTable('sync_jobs', {
+  id: text('id').primaryKey(),
+  dataSourceId: text('data_source_id').notNull().references(() => dataSources.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  status: text('status').notNull().default('queued'),
+  input: jsonb('input'),
+  output: jsonb('output'),
+  error: text('error'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const dataContexts = pgTable('data_contexts', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  projectId: text('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+  parentContextId: text('parent_context_id'),
+  name: text('name').notNull(),
+  description: text('description'),
+  rules: jsonb('rules').notNull(),
+  includedResources: jsonb('included_resources'),
+  status: text('status').notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const agentSkills = pgTable('agent_skills', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  contextId: text('context_id').references(() => dataContexts.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  instructions: text('instructions').notNull(),
+  tools: jsonb('tools').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const agentFeedback = pgTable('agent_feedback', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  contextId: text('context_id').references(() => dataContexts.id, { onDelete: 'set null' }),
+  actorUserId: text('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+  category: text('category').notNull(),
+  message: text('message').notNull(),
+  status: text('status').notNull().default('open'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const backgroundJobs = pgTable('background_jobs', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  status: text('status').notNull().default('queued'),
+  payload: jsonb('payload').notNull(),
+  result: jsonb('result'),
+  error: text('error'),
+  attempts: integer('attempts').notNull().default(0),
+  maxAttempts: integer('max_attempts').notNull().default(3),
+  leaseUntil: timestamp('lease_until'),
+  runAfter: timestamp('run_after').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const webhookEvents = pgTable('webhook_events', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull(),
+  sourceId: text('source_id').notNull().references(() => dataSources.id, { onDelete: 'cascade' }),
+  eventType: text('event_type').notNull(),
+  payload: jsonb('payload').notNull(),
+  status: text('status').notNull().default('accepted'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const deadLetterJobs = pgTable('dead_letter_jobs', {
+  id: text('id').primaryKey(),
+  originalJobId: text('original_job_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  payload: jsonb('payload').notNull(),
+  attempts: integer('attempts').notNull(),
+  error: text('error').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const docRevisions = pgTable('doc_revisions', {
+  id: text('id').primaryKey(),
+  pageId: text('page_id').notNull().references(() => docPages.id, { onDelete: 'cascade' }),
+  authorUserId: text('author_user_id').references(() => users.id, { onDelete: 'set null' }),
+  content: text('content').notNull(),
+  blocks: jsonb('blocks'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const docComments = pgTable('doc_comments', {
+  id: text('id').primaryKey(),
+  pageId: text('page_id').notNull().references(() => docPages.id, { onDelete: 'cascade' }),
+  authorUserId: text('author_user_id').references(() => users.id, { onDelete: 'set null' }),
+  body: text('body').notNull(),
+  status: text('status').notNull().default('open'),
+  anchor: jsonb('anchor'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const docApprovals = pgTable('doc_approvals', {
+  id: text('id').primaryKey(),
+  pageId: text('page_id').notNull().references(() => docPages.id, { onDelete: 'cascade' }),
+  requestedByUserId: text('requested_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  reviewerUserId: text('reviewer_user_id').references(() => users.id, { onDelete: 'set null' }),
+  status: text('status').notNull().default('pending'),
+  note: text('note'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const docRedirects = pgTable('doc_redirects', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  fromPath: text('from_path').notNull(),
+  toPath: text('to_path').notNull(),
+  statusCode: integer('status_code').notNull().default(301),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const codeContainers = pgTable('code_containers', {
+  id: text('id').primaryKey(),
+  designSystemId: text('design_system_id').notNull().references(() => designSystems.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  version: text('version').notNull(),
+  framework: text('framework').notNull().default('react'),
+  manifest: jsonb('manifest').notNull(),
+  artifactUrl: text('artifact_url'),
+  status: text('status').notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });

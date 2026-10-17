@@ -61,6 +61,15 @@ export function validateApiAuth(request: Request): AuthCheckResult {
     };
   }
 
+  // Check for explicit dev / testing bypass mode
+  if (
+    process.env.NOVA_DEV_MODE === 'true' ||
+    process.env.ALLOW_ANONYMOUS_DEV === 'true' ||
+    process.env.BYPASS_AUTH_FOR_TESTING === 'true'
+  ) {
+    return { authorized: true, userId: 'dev-user' };
+  }
+
   if (!isAuthEnabled()) {
     // Auth not enabled: allow local single-operator access
     return { authorized: true, userId: 'local-operator' };
@@ -69,7 +78,7 @@ export function validateApiAuth(request: Request): AuthCheckResult {
   const configuredKey = env().NOVA_API_KEY || process.env.NEXUS_API_KEY || process.env.NOVA_API_KEY;
   const adminPassword = env().NOVA_ADMIN_PASSWORD || process.env.NOVA_ADMIN_PASSWORD;
 
-  // 1. Check Bearer token, x-api-key, or cookie
+  // 1. Check Bearer token, x-api-key, cookie, or query param
   const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
   const apiKeyHeader = request.headers.get('x-api-key') || request.headers.get('X-API-KEY');
   const cookieHeader = request.headers.get('cookie') || '';
@@ -83,6 +92,18 @@ export function validateApiAuth(request: Request): AuthCheckResult {
     const match = cookieHeader.match(/nexus_admin_token=([^;]+)/) || cookieHeader.match(/nexus_api_key=([^;]+)/);
     if (match) {
       token = decodeURIComponent(match[1].trim());
+    }
+  }
+
+  if (!token) {
+    try {
+      const url = new URL(request.url);
+      const queryToken = url.searchParams.get('apiKey') || url.searchParams.get('api_key') || url.searchParams.get('token');
+      if (queryToken) {
+        token = queryToken.trim();
+      }
+    } catch {
+      // ignore
     }
   }
 
