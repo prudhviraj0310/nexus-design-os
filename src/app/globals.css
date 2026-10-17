@@ -116,6 +116,163 @@ body {
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
 }
 
+/* Vertical Navigation Rail */
+.nexus-rail {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 16px 8px !important;
+  user-select: none;
+  z-index: 30;
+  flex-shrink: 0 !important;
+}
+
+.nexus-rail-btn {
+  position: relative !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  border-radius: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #64748b !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.nexus-rail-btn:hover {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+.nexus-rail-btn.active {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18) !important;
+}
+
+/* Tooltip: Strictly hidden unless hovered */
+.nexus-rail-tooltip {
+  display: none !important;
+  position: absolute !important;
+  left: 56px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  z-index: 9999 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25) !important;
+}
+
+.nexus-rail-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent #0f172a transparent transparent;
+}
+
+.nexus-rail-btn:hover .nexus-rail-tooltip {
+  display: block !important;
+}
+
+/* 12-Column Responsive Grid */
+.nexus-grid-12 {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+  align-items: stretch !important;
+}
+
+@media (max-width: 1100px) {
+  .nexus-grid-12 {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+  .nexus-grid-12 > .col-span-4 {
+    grid-column: span 6 / span 6 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .nexus-grid-12 {
+    grid-template-columns: 1fr !important;
+  }
+  .nexus-grid-12 > * {
+    grid-column: span 1 / span 1 !important;
+  }
+}
+
+/* Quick Actions 4-in-a-row button group */
+.nexus-action-button-group {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 8px !important;
+  text-align: center;
+}
+
+.nexus-quick-action-btn {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+}
+
+.nexus-quick-action-btn .nexus-circle-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #0f172a !important;
+  transition: all 0.18s ease !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+.nexus-quick-action-btn:hover .nexus-circle-icon {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15) !important;
+}
+
+.nexus-quick-action-btn span {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #475569 !important;
+}
+
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -293,10 +450,18 @@ button:disabled {
 .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
-.col-span-5 { grid-column: span 5 / span 5; }
-.col-span-7 { grid-column: span 7 / span 7; }
+.col-span-1 { grid-column: span 1 / span 1; }
+.col-span-2 { grid-column: span 2 / span 2; }
 .col-span-3 { grid-column: span 3 / span 3; }
 .col-span-4 { grid-column: span 4 / span 4; }
+.col-span-5 { grid-column: span 5 / span 5; }
+.col-span-6 { grid-column: span 6 / span 6; }
+.col-span-7 { grid-column: span 7 / span 7; }
+.col-span-8 { grid-column: span 8 / span 8; }
+.col-span-9 { grid-column: span 9 / span 9; }
+.col-span-10 { grid-column: span 10 / span 10; }
+.col-span-11 { grid-column: span 11 / span 11; }
+.col-span-12 { grid-column: span 12 / span 12; }
 
 .bg-white { background-color: #ffffff; }
 .bg-\[\#f8fafc\] { background-color: #f8fafc; }

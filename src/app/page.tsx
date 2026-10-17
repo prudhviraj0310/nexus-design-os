@@ -1040,7 +1040,7 @@ Endpoint: \`${mcpEndpointUrl}\`
         {/* WORKSPACE BODY (SLIM ICON RAIL + MAIN CONTENT AREA) */}
         <div className="flex-1 flex overflow-hidden min-h-0 relative">
           {/* 2. SLIM VERTICAL ICON RAIL */}
-          <nav className="w-[68px] sm:w-[74px] bg-white/70 backdrop-blur-md border-r border-[#e2e8f0]/80 flex flex-col justify-between items-center py-4 px-2 select-none z-20 flex-shrink-0" aria-label="Main Navigation">
+          <nav className="nexus-rail" aria-label="Main Navigation">
             {/* Primary Nav Items */}
             <div className="flex flex-col items-center gap-2 w-full">
               {[
@@ -1063,15 +1063,10 @@ Endpoint: \`${mcpEndpointUrl}\`
                     onClick={() => setActiveNav(item.nav)}
                     title={item.label}
                     aria-label={item.label}
-                    className={`group relative w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
-                      isActive
-                        ? 'bg-[#0f172a] text-white shadow-md shadow-slate-900/15 scale-105'
-                        : 'text-[#64748b] hover:bg-white hover:text-[#0f172a] hover:shadow-xs'
-                    }`}
+                    className={`nexus-rail-btn ${isActive ? 'active' : ''}`}
                   >
                     {item.icon}
-                    {/* Tooltip */}
-                    <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-30">
+                    <span className="nexus-rail-tooltip">
                       {item.label} {item.count !== undefined ? `(${item.count})` : ''}
                     </span>
                   </button>
@@ -1085,23 +1080,19 @@ Endpoint: \`${mcpEndpointUrl}\`
                 type="button"
                 onClick={() => setShowAuthModal(true)}
                 title="Settings & Credentials"
-                className="group relative w-10 h-10 rounded-xl flex items-center justify-center text-[#64748b] hover:bg-white hover:text-[#0f172a] transition-all"
+                className="nexus-rail-btn"
               >
                 <Settings size={16} />
-                <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-30">
-                  Settings & Auth
-                </span>
+                <span className="nexus-rail-tooltip">Settings & Auth</span>
               </button>
               <button
                 type="button"
                 onClick={() => window.open('/docs', '_blank', 'noopener,noreferrer')}
                 title="Public Documentation Portal"
-                className="group relative w-10 h-10 rounded-xl flex items-center justify-center text-[#64748b] hover:bg-white hover:text-[#0f172a] transition-all"
+                className="nexus-rail-btn"
               >
                 <HelpCircle size={16} />
-                <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-30">
-                  Documentation Portal
-                </span>
+                <span className="nexus-rail-tooltip">Documentation Portal</span>
               </button>
             </div>
           </nav>
@@ -1131,9 +1122,9 @@ Endpoint: \`${mcpEndpointUrl}\`
             {activeNav === 'overview' && (
               <div className="space-y-6 max-w-7xl mx-auto">
                 {/* TOP ROW: Available Balance / Stats & Activity / Fast Delivery */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                <div className="nexus-grid-12">
                   {/* CARD 1: Available Tokens (Available Balance in Payno) */}
-                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between text-xs font-semibold text-[#64748b]">
                         <span className="flex items-center gap-1.5">
@@ -1168,16 +1159,16 @@ Endpoint: \`${mcpEndpointUrl}\`
                       <div className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] mb-3">
                         Quick Actions
                       </div>
-                      <div className="grid grid-cols-4 gap-2 text-center">
+                      <div className="nexus-action-button-group">
                         <button
                           type="button"
                           onClick={() => setShowAddModal(true)}
-                          className="group flex flex-col items-center gap-1.5"
+                          className="nexus-quick-action-btn"
                         >
-                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                          <div className="nexus-circle-icon">
                             <Plus size={16} />
                           </div>
-                          <span className="text-[10px] font-semibold text-[#475569]">Add Token</span>
+                          <span>Add Token</span>
                         </button>
 
                         <button
@@ -1186,41 +1177,41 @@ Endpoint: \`${mcpEndpointUrl}\`
                             setExportFormat('css');
                             setActiveNav('automation');
                           }}
-                          className="group flex flex-col items-center gap-1.5"
+                          className="nexus-quick-action-btn"
                         >
-                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                          <div className="nexus-circle-icon">
                             <Download size={15} />
                           </div>
-                          <span className="text-[10px] font-semibold text-[#475569]">Export</span>
+                          <span>Export</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setActiveNav('figma')}
-                          className="group flex flex-col items-center gap-1.5"
+                          className="nexus-quick-action-btn"
                         >
-                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                          <div className="nexus-circle-icon">
                             <IntegrationLogo name="figma" size={16} />
                           </div>
-                          <span className="text-[10px] font-semibold text-[#475569]">Figma Sync</span>
+                          <span>Figma Sync</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setActiveNav('automation')}
-                          className="group flex flex-col items-center gap-1.5"
+                          className="nexus-quick-action-btn"
                         >
-                          <div className="w-11 h-11 rounded-full bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center text-[#0f172a] group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a] transition-all shadow-xs">
+                          <div className="nexus-circle-icon">
                             <GitPullRequest size={15} />
                           </div>
-                          <span className="text-[10px] font-semibold text-[#475569]">Deliver PR</span>
+                          <span>Deliver PR</span>
                         </button>
                       </div>
                     </div>
                   </div>
 
                   {/* CARD 2: Stats & Activity Chart (Revenue/Expense/Activity in Payno) */}
-                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
                     <div>
                       <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
@@ -1279,7 +1270,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* CARD 3: Fast Delivery & Export (Send Money card in Payno) */}
-                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between text-xs font-semibold text-[#0f172a]">
                         <span>Fast Code Delivery</span>
@@ -1368,9 +1359,9 @@ Endpoint: \`${mcpEndpointUrl}\`
                 </div>
 
                 {/* BOTTOM ROW: Recent Activity / Active Pipelines / Visual Token Card */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                <div className="nexus-grid-12">
                   {/* CARD 4: Recent Activity (Recent transactions in Payno) */}
-                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#64748b] mb-4">
                         <span>Recent Activity</span>
@@ -1407,7 +1398,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* CARD 5: Active Delivery Pipelines (Upcoming Payments in Payno) */}
-                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between">
+                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#64748b] mb-4">
                         <span>Delivery Pipelines</span>
@@ -1439,7 +1430,7 @@ Endpoint: \`${mcpEndpointUrl}\`
                   </div>
 
                   {/* CARD 6: Visual Live Token Card (Credit Card widget in Payno) */}
-                  <div className="lg:col-span-4 nexus-card p-6 flex flex-col justify-between bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#1e1b4b] text-white border-0 shadow-xl relative overflow-hidden">
+                  <div className="col-span-4 nexus-card p-6 flex flex-col justify-between bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#1e1b4b] text-white border-0 shadow-xl relative overflow-hidden">
                     {/* Subtle decorative glow */}
                     <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
                     <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
